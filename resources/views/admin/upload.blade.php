@@ -276,6 +276,10 @@ function doUploadProduk() {
             document.getElementById('progress-bar-produk').style.width = '100%';
             if (res.ok) {
                 document.getElementById('progress-text-produk').textContent = res.pesan;
+                if (res.baris_invalid > 0) {
+                    document.getElementById('progress-text-produk').textContent += ' (' + res.baris_valid + ' sukses, ' + res.baris_invalid + ' gagal)';
+                }
+                document.getElementById('btn-upload-produk').disabled = false;
             } else {
                 document.getElementById('progress-text-produk').textContent = res.pesan || 'Gagal memproses.';
                 document.getElementById('btn-upload-produk').disabled = false;
