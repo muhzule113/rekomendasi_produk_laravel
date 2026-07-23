@@ -382,8 +382,27 @@ class UploadService
 
     private function launchPipeline(int $id_upload, string $log_path): bool
     {
-        $pythonBin = config('app.python_bin') ?: 'python';
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        if (in_array('exec', $disabled, true) && in_array('shell_exec', $disabled, true)) {
+            DB::table('data_uploads')->where('id_upload', $id_upload)->update([
+                'status' => 'gagal',
+                'pesan_error' => 'PHP exec/shell_exec dinonaktifkan di server. Pipeline tidak bisa dijalankan.',
+                'processed_at' => now(),
+            ]);
+            Log::error('Pipeline blocked: exec disabled', ['id_upload' => $id_upload]);
+
+            return false;
+        }
+
+        $pythonBin = config('app.python_bin');
+        if (!$pythonBin) {
+            $pythonBin = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' ? 'python' : 'python3';
+        }
+
         $pipelineScript = config('app.pipeline_script') ?: base_path('python/pipeline/pipeline_runner.py');
+        $pipelineScript = str_starts_with($pipelineScript, DIRECTORY_SEPARATOR)
+            ? $pipelineScript
+            : base_path($pipelineScript);
 
         if (!is_file($pipelineScript)) {
             DB::table('data_uploads')->where('id_upload', $id_upload)->update([
@@ -396,6 +415,11 @@ class UploadService
             return false;
         }
 
+        $logsDir = dirname($log_path);
+        if (!is_dir($logsDir)) {
+            mkdir($logsDir, 0755, true);
+        }
+
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $cmd = sprintf(
                 'cmd /c start /B "" %s %s --upload_id %d >> %s 2>&1',
@@ -406,14 +430,20 @@ class UploadService
             );
             pclose(popen($cmd, 'r'));
         } else {
+            // nohup + & : lebih stabil di VPS/Linux (PHP-FPM, nginx)
             $cmd = sprintf(
-                '%s %s --upload_id %d >> %s 2>&1 &',
+                'nohup %s %s --upload_id %d >> %s 2>&1 &',
                 escapeshellarg($pythonBin),
                 escapeshellarg($pipelineScript),
                 $id_upload,
                 escapeshellarg($log_path)
             );
-            exec($cmd);
+            exec($cmd, $output, $exitCode);
+            Log::info('Pipeline launched', [
+                'id_upload' => $id_upload,
+                'cmd' => $cmd,
+                'exit_code' => $exitCode,
+            ]);
         }
 
         return true;

@@ -150,8 +150,10 @@ if __name__ == '__main__':
     parser.add_argument('--upload_id', type=int, required=True)
     args = parser.parse_args()
 
+    # Tandai pipeline sudah jalan (supaya UI tidak stuck di "menunggu")
+    update_status(args.upload_id, 'memproses')
+
     try:
         run_pipeline(args.upload_id)
     except Exception:
-        # Status sudah diupdate di dalam run_pipeline, log sudah tercetak
         sys.exit(1)
