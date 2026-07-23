@@ -8,11 +8,42 @@
     <p class="text-sm text-muted" style="margin-top:.25rem;">Kelola dan pantau informasi pelanggan serta jumlah riwayat transaksinya.</p>
 </div>
 
+@if(session('success'))
+    <div class="alert-card mb-6" style="background: #dcfce7; border-color: #bbf7d0;">
+        <div class="alert-card-left">
+            <i class="fa-solid fa-check-circle" style="color: #166534; font-size: 1.1rem; margin-top: 2px;"></i>
+            <div>
+                <div class="alert-card-title" style="color: #166534;">Berhasil!</div>
+                <div class="alert-card-desc" style="color: #15803d;">{{ session('success') }}</div>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert-card mb-6" style="background: #fee2e2; border-color: #fecaca;">
+        <div class="alert-card-left">
+            <i class="fa-solid fa-circle-exclamation" style="color: #b91c1c; font-size: 1.1rem; margin-top: 2px;"></i>
+            <div>
+                <div class="alert-card-title" style="color: #b91c1c;">Gagal!</div>
+                <div class="alert-card-desc" style="color: #991b1b;">{{ session('error') }}</div>
+            </div>
+        </div>
+    </div>
+@endif
+
 <div class="card">
+    <div id="bulk-action-bar" style="display:none; padding: .75rem 1rem; border-bottom: 1px solid var(--border-color); background: #fef2f2; align-items: center; gap: .75rem;">
+        <span class="text-sm" style="color:#991b1b;">Terpilih: <strong id="bulk-count">0</strong></span>
+        <button type="button" class="btn btn-sm" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca;" onclick="submitBulkDelete('formBulkPelanggan', { title: 'Hapus Pelanggan Terpilih?', desc: 'Pelanggan yang masih punya riwayat transaksi tidak akan dihapus.', okLabel: 'Hapus Pelanggan', loadingText: 'Menghapus pelanggan...' })">
+            <i class="fa-solid fa-trash"></i> Hapus Terpilih
+        </button>
+    </div>
     <div class="table-overflow">
         <table>
             <thead>
                 <tr>
+                    <th style="width:40px;"><input type="checkbox" id="checkAllPelanggan" onchange="bulkToggleAll('checkAllPelanggan', 'ids[]')"></th>
                     <th>ID</th>
                     <th>Nama Lengkap</th>
                     <th>Email</th>
@@ -26,6 +57,7 @@
             <tbody>
                 @foreach($customers as $c)
                 <tr>
+                    <td><input type="checkbox" class="bulk-check" name="ids[]" value="{{ $c->id_user }}" onchange="bulkUpdateBar('ids[]')"></td>
                     <td>{{ $c->id_user }}</td>
                     <td class="font-bold">{{ $c->nama }}</td>
                     <td>{{ $c->email }}</td>
@@ -52,6 +84,11 @@
         {!! \App\Helpers\Helpers::renderPagination($currentPage, $totalPages, request()->query()) !!}
     </div>
 </div>
+
+<form id="formBulkPelanggan" method="POST" action="{{ route('admin.pelanggan.bulk-destroy') }}" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
 
 <!-- Modal Detail -->
 <div class="modal-overlay" id="modal-detail" onclick="adminModalClose('modal-detail')">

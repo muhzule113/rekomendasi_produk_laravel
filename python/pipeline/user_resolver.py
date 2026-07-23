@@ -12,7 +12,11 @@ DEFAULT_PASSWORD = "pelanggan123"
 
 
 def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    # PHP/Laravel expects $2y$; Python bcrypt emits $2b$ (same algo, different prefix).
+    if hashed.startswith('$2b$'):
+        hashed = '$2y$' + hashed[4:]
+    return hashed
 
 
 def resolve_users(records: list, id_upload: int) -> list:

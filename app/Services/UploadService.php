@@ -58,21 +58,8 @@ class UploadService
         if (!is_dir($logsDir)) mkdir($logsDir, 0755, true);
         $log_path = $logsDir . '/pipeline_' . $id_upload . '.log';
 
-        $pythonBin = config('app.python_bin', 'python');
-        $pipelineScript = config('app.pipeline_script', base_path('python/pipeline/pipeline_runner.py'));
-
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $cmd = sprintf(
-                'start /B "" "%s" "%s" --upload_id %d > "%s" 2>&1',
-                $pythonBin, $pipelineScript, $id_upload, $log_path
-            );
-            pclose(popen($cmd, 'r'));
-        } else {
-            $cmd = sprintf(
-                '%s %s --upload_id %d > %s 2>&1 &',
-                escapeshellarg($pythonBin), escapeshellarg($pipelineScript), $id_upload, escapeshellarg($log_path)
-            );
-            exec($cmd);
+        if (!$this->launchPipeline($id_upload, $log_path)) {
+            return ['ok' => false, 'pesan' => 'Script pipeline tidak ditemukan. Periksa konfigurasi PYTHON_BIN / PIPELINE_SCRIPT.'];
         }
 
         return [
@@ -83,7 +70,7 @@ class UploadService
         ];
     }
 
-    public function handleUploadProduk(array $file, int $id_user): array
+    public function handleProdukUpload(array $file, int $id_user): array
     {
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return ['ok' => false, 'pesan' => 'Upload gagal, coba lagi.'];
@@ -91,18 +78,29 @@ class UploadService
 
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if ($ext !== 'csv') {
-            return ['ok' => false, 'pesan' => 'Format file produk harus CSV.'];
+            return ['ok' => false, 'pesan' => 'Format file harus CSV.'];
         }
 
         $ukuran_kb = round($file['size'] / 1024);
-        if ($ukuran_kb > 10240) {
-            return ['ok' => false, 'pesan' => 'Ukuran file maksimal 10MB.'];
+        $maxMb = config('app.max_upload_mb', 10);
+        if ($ukuran_kb > $maxMb * 1024) {
+            return ['ok' => false, 'pesan' => 'Ukuran file maksimal ' . $maxMb . 'MB.'];
         }
 
         $file_hash = hash_file('sha256', $file['tmp_name']);
+        $exists = DB::table('data_uploads')
+            ->where('file_hash', $file_hash)
+            ->where('sumber', 'produk')
+            ->where('status', 'selesai')
+            ->exists();
+        if ($exists) {
+            return ['ok' => false, 'pesan' => 'File ini sudah pernah berhasil diupload sebelumnya.'];
+        }
 
         $rawDir = storage_path('app/uploads/raw');
+        $doneDir = storage_path('app/uploads/processed');
         if (!is_dir($rawDir)) mkdir($rawDir, 0755, true);
+        if (!is_dir($doneDir)) mkdir($doneDir, 0755, true);
 
         $nama_disk = date('Ymd_His') . '_' . uniqid() . '.' . $ext;
         $path_tujuan = $rawDir . '/' . $nama_disk;
@@ -124,179 +122,301 @@ class UploadService
             'uploaded_at' => now(),
         ]);
 
-        // Proses CSV langsung di PHP
-        $handle = fopen($path_tujuan, 'r');
-        if (!$handle) {
-            DB::table('data_uploads')->where('id_upload', $id_upload)->update(['status' => 'gagal', 'pesan_error' => 'Gagal membaca file']);
-            return ['ok' => false, 'pesan' => 'Gagal membaca file CSV.'];
+        try {
+            $result = $this->importProdukCsv($path_tujuan, $id_upload);
+        } catch (\Throwable $e) {
+            DB::table('data_uploads')->where('id_upload', $id_upload)->update([
+                'status' => 'gagal',
+                'pesan_error' => $e->getMessage(),
+                'processed_at' => now(),
+            ]);
+            Log::error('Product import failed', ['id_upload' => $id_upload, 'error' => $e->getMessage()]);
+
+            return ['ok' => false, 'pesan' => 'Gagal memproses CSV produk: ' . $e->getMessage()];
         }
 
-        $header = fgetcsv($handle);
-        if (!$header) {
-            fclose($handle);
-            DB::table('data_uploads')->where('id_upload', $id_upload)->update(['status' => 'gagal', 'pesan_error' => 'File CSV kosong']);
-            return ['ok' => false, 'pesan' => 'File CSV kosong.'];
-        }
-
-        $header = array_map(fn($h) => strtolower(trim($h)), $header);
-
-        // Map kolom
-        $colMap = [];
-        $aliases = [
-            'nama_product' => ['nama_product', 'nama produk', 'product_name', 'nama barang', 'nama'],
-            'harga' => ['harga', 'harga_satuan', 'price', 'harga satuan'],
-            'stok' => ['stok', 'stock', 'qty', 'jumlah', 'quantity'],
-            'nama_category' => ['nama_category', 'category', 'kategori', 'nama kategori', 'nama_kategori'],
-            'deskripsi' => ['deskripsi', 'description', 'deskripsi produk'],
-            'status' => ['status', 'status_produk', 'produk_status'],
-        ];
-
-        foreach ($aliases as $field => $aliasList) {
-            foreach ($aliasList as $alias) {
-                $idx = array_search($alias, $header);
-                if ($idx !== false) {
-                    $colMap[$field] = $idx;
-                    break;
-                }
-            }
-        }
-
-        if (!isset($colMap['nama_product'])) {
-            fclose($handle);
-            DB::table('data_uploads')->where('id_upload', $id_upload)->update(['status' => 'gagal', 'pesan_error' => 'Kolom nama_product tidak ditemukan']);
-            return ['ok' => false, 'pesan' => 'Kolom wajib "nama_product" tidak ditemukan di CSV.'];
-        }
-        if (!isset($colMap['harga'])) {
-            fclose($handle);
-            DB::table('data_uploads')->where('id_upload', $id_upload)->update(['status' => 'gagal', 'pesan_error' => 'Kolom harga tidak ditemukan']);
-            return ['ok' => false, 'pesan' => 'Kolom wajib "harga" tidak ditemukan di CSV.'];
-        }
-        if (!isset($colMap['stok'])) {
-            fclose($handle);
-            DB::table('data_uploads')->where('id_upload', $id_upload)->update(['status' => 'gagal', 'pesan_error' => 'Kolom stok tidak ditemukan']);
-            return ['ok' => false, 'pesan' => 'Kolom wajib "stok" tidak ditemukan di CSV.'];
-        }
-
-        $baris_valid = 0;
-        $baris_invalid = 0;
-        $logs = [];
-        $nomor_baris = 1;
-
-        while (($row = fgetcsv($handle)) !== false) {
-            $nomor_baris++;
-            $data_mentah = json_encode($row, JSON_UNESCAPED_UNICODE);
-
-            try {
-                $nama_product = trim($row[$colMap['nama_product']] ?? '');
-                $harga = trim($row[$colMap['harga']] ?? '');
-                $stok = trim($row[$colMap['stok']] ?? '');
-
-                if (empty($nama_product)) {
-                    throw new \Exception('Nama produk kosong');
-                }
-                if (!is_numeric($harga) || (float)$harga < 0) {
-                    throw new \Exception('Harga tidak valid: ' . $harga);
-                }
-                if (!is_numeric($stok) || (int)$stok < 0) {
-                    throw new \Exception('Stok tidak valid: ' . $stok);
-                }
-
-                // Optional: category
-                $id_category = null;
-                if (isset($colMap['nama_category'])) {
-                    $nama_category = trim($row[$colMap['nama_category']] ?? '');
-                    if (!empty($nama_category)) {
-                        $cat = DB::table('categories')->where('nama_category', $nama_category)->first();
-                        if (!$cat) {
-                            $id_category = DB::table('categories')->insertGetId(['nama_category' => $nama_category]);
-                        } else {
-                            $id_category = $cat->id_category;
-                        }
-                    }
-                }
-
-                // Optional: deskripsi
-                $deskripsi = isset($colMap['deskripsi']) ? trim($row[$colMap['deskripsi']] ?? '') : null;
-
-                // Optional: status
-                $status = 'aktif';
-                if (isset($colMap['status'])) {
-                    $s = strtolower(trim($row[$colMap['status']] ?? ''));
-                    if (in_array($s, ['nonaktif', 'non-aktif', 'tidak aktif', '0', 'false'])) {
-                        $status = 'nonaktif';
-                    }
-                }
-
-                // Upsert produk by nama_product
-                $existing = DB::table('products')->where('nama_product', $nama_product)->first();
-                $dataUpdate = [
-                    'harga' => (float)$harga,
-                    'stok' => (int)$stok,
-                    'deskripsi' => $deskripsi,
-                    'status' => $status,
-                ];
-                if ($id_category) {
-                    $dataUpdate['id_category'] = $id_category;
-                }
-
-                if ($existing) {
-                    DB::table('products')->where('id_product', $existing->id_product)->update($dataUpdate);
-                    $id_product = $existing->id_product;
-                } else {
-                    $dataUpdate['nama_product'] = $nama_product;
-                    $id_product = DB::table('products')->insertGetId($dataUpdate);
-                }
-
-                $baris_valid++;
-                $logs[] = [
-                    'id_upload' => $id_upload,
-                    'nomor_baris' => $nomor_baris,
-                    'status_baris' => 'imported',
-                    'data_mentah' => $data_mentah,
-                    'data_bersih' => json_encode(['id_product' => $id_product, 'nama_product' => $nama_product], JSON_UNESCAPED_UNICODE),
-                    'id_transaction' => null,
-                    'keterangan' => $existing ? 'Produk diupdate' : 'Produk baru ditambahkan',
-                ];
-
-            } catch (\Exception $e) {
-                $baris_invalid++;
-                $logs[] = [
-                    'id_upload' => $id_upload,
-                    'nomor_baris' => $nomor_baris,
-                    'status_baris' => 'invalid',
-                    'data_mentah' => $data_mentah,
-                    'data_bersih' => null,
-                    'id_transaction' => null,
-                    'keterangan' => $e->getMessage(),
-                ];
-            }
-        }
-        fclose($handle);
-
-        $total_baris = $baris_valid + $baris_invalid;
-
-        // Simpan logs
-        DB::table('upload_logs')->insert($logs);
-
-        // Update status upload
+        rename($path_tujuan, $doneDir . '/' . $nama_disk);
         DB::table('data_uploads')->where('id_upload', $id_upload)->update([
+            'path_file' => $doneDir . '/' . $nama_disk,
+            'total_baris' => $result['total_baris'],
+            'baris_valid' => $result['baris_valid'],
+            'baris_invalid' => $result['baris_invalid'],
+            'baris_diimport' => $result['baris_valid'],
             'status' => 'selesai',
-            'total_baris' => $total_baris,
-            'baris_valid' => $baris_valid,
-            'baris_invalid' => $baris_invalid,
-            'baris_diimport' => $baris_valid,
             'processed_at' => now(),
         ]);
+
+        $pesan = sprintf(
+            'Selesai: %d produk diproses (%d baru, %d diupdate), %d gagal.',
+            $result['baris_valid'],
+            $result['inserted'],
+            $result['updated'],
+            $result['baris_invalid']
+        );
 
         return [
             'ok' => true,
             'id_upload' => $id_upload,
             'nama_file' => $file['name'],
-            'pesan' => 'Upload produk selesai! ' . $baris_valid . ' produk diimport, ' . $baris_invalid . ' gagal.',
-            'total_baris' => $total_baris,
-            'baris_valid' => $baris_valid,
-            'baris_invalid' => $baris_invalid,
+            'pesan' => $pesan,
+            'baris_valid' => $result['baris_valid'],
+            'baris_invalid' => $result['baris_invalid'],
+            'errors' => $result['errors'],
         ];
+    }
+
+    private function importProdukCsv(string $path, int $id_upload): array
+    {
+        $handle = fopen($path, 'r');
+        if (!$handle) {
+            throw new \RuntimeException('Tidak bisa membaca file CSV.');
+        }
+
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            throw new \RuntimeException('File CSV kosong atau header tidak valid.');
+        }
+
+        $colMap = $this->mapProdukColumns($header);
+        foreach (['nama_product', 'harga', 'stok'] as $required) {
+            if (!isset($colMap[$required])) {
+                fclose($handle);
+                throw new \RuntimeException("Kolom wajib tidak ditemukan: {$required}");
+            }
+        }
+
+        $categories = DB::table('categories')->pluck('id_category', 'nama_category')
+            ->mapWithKeys(fn ($id, $name) => [mb_strtolower(trim($name)) => $id])
+            ->all();
+        $defaultCategoryId = (int) DB::table('categories')->orderBy('id_category')->value('id_category');
+
+        $total = 0;
+        $valid = 0;
+        $invalid = 0;
+        $inserted = 0;
+        $updated = 0;
+        $errors = [];
+        $logs = [];
+        $nomorBaris = 1;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $nomorBaris++;
+            if ($this->isEmptyCsvRow($row)) {
+                continue;
+            }
+
+            $total++;
+            $data = $this->rowToAssoc($header, $row);
+            $nama = trim((string) ($data[$colMap['nama_product']] ?? ''));
+            $harga = $this->parseAngka($data[$colMap['harga']] ?? null);
+            $stok = $this->parseAngka($data[$colMap['stok']] ?? null);
+            $namaCategory = isset($colMap['nama_category'])
+                ? trim((string) ($data[$colMap['nama_category']] ?? ''))
+                : '';
+            $deskripsi = isset($colMap['deskripsi'])
+                ? trim((string) ($data[$colMap['deskripsi']] ?? ''))
+                : null;
+            $status = isset($colMap['status'])
+                ? strtolower(trim((string) ($data[$colMap['status']] ?? 'aktif')))
+                : 'aktif';
+
+            $rowErrors = [];
+            if ($nama === '') $rowErrors[] = 'nama_product wajib diisi';
+            if ($harga === null || $harga < 0) $rowErrors[] = 'harga tidak valid';
+            if ($stok === null || $stok < 0 || floor($stok) != $stok) $rowErrors[] = 'stok tidak valid';
+            if (!in_array($status, ['aktif', 'nonaktif'], true)) $rowErrors[] = 'status harus aktif/nonaktif';
+
+            $idCategory = $this->resolveCategoryId($namaCategory, $categories, $defaultCategoryId);
+
+            if ($rowErrors) {
+                $invalid++;
+                $keterangan = implode('; ', $rowErrors);
+                $errors[] = ['baris' => $nomorBaris, 'pesan' => $keterangan];
+                $logs[] = [
+                    'id_upload' => $id_upload,
+                    'nomor_baris' => $nomorBaris,
+                    'status_baris' => 'invalid',
+                    'data_mentah' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                    'keterangan' => $keterangan,
+                    'created_at' => now(),
+                ];
+                continue;
+            }
+
+            $payload = [
+                'nama_product' => $nama,
+                'id_category' => $idCategory,
+                'harga' => $harga,
+                'stok' => (int) $stok,
+                'deskripsi' => $deskripsi ?: null,
+                'status' => $status,
+            ];
+
+            $existing = DB::table('products')->where('nama_product', $nama)->first();
+            if ($existing) {
+                DB::table('products')->where('id_product', $existing->id_product)->update($payload);
+                $updated++;
+            } else {
+                DB::table('products')->insert(array_merge($payload, ['created_at' => now()]));
+                $inserted++;
+            }
+
+            $valid++;
+            $logs[] = [
+                'id_upload' => $id_upload,
+                'nomor_baris' => $nomorBaris,
+                'status_baris' => 'imported',
+                'data_mentah' => json_encode($data, JSON_UNESCAPED_UNICODE),
+                'keterangan' => $existing ? 'Produk diupdate' : 'Produk baru ditambahkan',
+                'created_at' => now(),
+            ];
+        }
+
+        fclose($handle);
+
+        if ($logs) {
+            DB::table('upload_logs')->insert($logs);
+        }
+
+        return [
+            'total_baris' => $total,
+            'baris_valid' => $valid,
+            'baris_invalid' => $invalid,
+            'inserted' => $inserted,
+            'updated' => $updated,
+            'errors' => $errors,
+        ];
+    }
+
+    private function mapProdukColumns(array $header): array
+    {
+        $aliases = [
+            'nama_product' => ['nama_product', 'nama produk', 'product_name', 'nama barang'],
+            'harga' => ['harga', 'price'],
+            'stok' => ['stok', 'stock', 'qty', 'jumlah'],
+            'nama_category' => ['nama_category', 'nama category', 'kategori', 'category', 'nama_kategori'],
+            'deskripsi' => ['deskripsi', 'description', 'desc'],
+            'status' => ['status'],
+        ];
+
+        $cols = [];
+        foreach ($header as $i => $name) {
+            $cols[mb_strtolower(trim($name))] = trim($name);
+        }
+
+        $map = [];
+        foreach ($aliases as $field => $names) {
+            foreach ($names as $alias) {
+                if (isset($cols[$alias])) {
+                    $map[$field] = $cols[$alias];
+                    break;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    private function resolveCategoryId(string $namaCategory, array &$categories, int &$defaultCategoryId): int
+    {
+        if ($namaCategory === '') {
+            if ($defaultCategoryId) {
+                return $defaultCategoryId;
+            }
+            $namaCategory = 'Umum';
+        }
+
+        $key = mb_strtolower($namaCategory);
+        if (isset($categories[$key])) {
+            return (int) $categories[$key];
+        }
+
+        $id = (int) DB::table('categories')->insertGetId(['nama_category' => $namaCategory]);
+        $categories[$key] = $id;
+        if (!$defaultCategoryId) {
+            $defaultCategoryId = $id;
+        }
+
+        return $id;
+    }
+
+    private function rowToAssoc(array $header, array $row): array
+    {
+        $data = [];
+        foreach ($header as $i => $col) {
+            $data[trim($col)] = $row[$i] ?? '';
+        }
+
+        return $data;
+    }
+
+    private function isEmptyCsvRow(array $row): bool
+    {
+        foreach ($row as $cell) {
+            if (trim((string) $cell) !== '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function parseAngka(mixed $val): ?float
+    {
+        if ($val === null) {
+            return null;
+        }
+
+        $val = trim((string) $val);
+        if ($val === '') {
+            return null;
+        }
+
+        $val = str_ireplace(['rp', ' '], '', $val);
+        $val = str_replace('.', '', $val);
+        $val = str_replace(',', '.', $val);
+
+        return is_numeric($val) ? (float) $val : null;
+    }
+
+    private function launchPipeline(int $id_upload, string $log_path): bool
+    {
+        $pythonBin = config('app.python_bin') ?: 'python';
+        $pipelineScript = config('app.pipeline_script') ?: base_path('python/pipeline/pipeline_runner.py');
+
+        if (!is_file($pipelineScript)) {
+            DB::table('data_uploads')->where('id_upload', $id_upload)->update([
+                'status' => 'gagal',
+                'pesan_error' => 'Script pipeline tidak ditemukan: ' . $pipelineScript,
+                'processed_at' => now(),
+            ]);
+            Log::error('Pipeline script not found', ['path' => $pipelineScript, 'id_upload' => $id_upload]);
+
+            return false;
+        }
+
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $cmd = sprintf(
+                'cmd /c start /B "" %s %s --upload_id %d >> %s 2>&1',
+                escapeshellarg($pythonBin),
+                escapeshellarg($pipelineScript),
+                $id_upload,
+                escapeshellarg($log_path)
+            );
+            pclose(popen($cmd, 'r'));
+        } else {
+            $cmd = sprintf(
+                '%s %s --upload_id %d >> %s 2>&1 &',
+                escapeshellarg($pythonBin),
+                escapeshellarg($pipelineScript),
+                $id_upload,
+                escapeshellarg($log_path)
+            );
+            exec($cmd);
+        }
+
+        return true;
     }
 
     public function getStatus(int $id_upload): array
@@ -337,5 +457,30 @@ class UploadService
         }
 
         return $query->get()->map(fn($r) => (array)$r)->toArray();
+    }
+
+    public function deleteUpload(int $id_upload): array
+    {
+        $upload = DB::table('data_uploads')->where('id_upload', $id_upload)->first();
+        if (!$upload) {
+            return ['ok' => false, 'pesan' => 'Riwayat upload tidak ditemukan.'];
+        }
+
+        if (in_array($upload->status, ['menunggu', 'memproses'], true)) {
+            return ['ok' => false, 'pesan' => 'Upload masih diproses. Tunggu selesai atau gagal sebelum dihapus.'];
+        }
+
+        if (!empty($upload->path_file) && is_file($upload->path_file)) {
+            @unlink($upload->path_file);
+        }
+
+        $logPath = storage_path('app/uploads/logs/pipeline_' . $id_upload . '.log');
+        if (is_file($logPath)) {
+            @unlink($logPath);
+        }
+
+        DB::table('data_uploads')->where('id_upload', $id_upload)->delete();
+
+        return ['ok' => true, 'pesan' => 'Riwayat upload berhasil dihapus.'];
     }
 }

@@ -45,7 +45,8 @@ class RecommenderService
     }
 
     /**
-     * Compute cosine similarity between all product pairs
+     * Dice similarity + normalisasi ke [0,1] relatif terhadap pasangan terkuat.
+     * # ponytail: skor relatif ke max katalog; absolute Dice jika banding lintas dataset
      */
     public function calculateCosineSimilarity(array $matrix): array
     {
@@ -53,63 +54,66 @@ class RecommenderService
             return ['similarities' => [], 'stats' => ['error' => 'Matrix kosong, tidak cukup data transaksi.']];
         }
 
-        $itemMatrix = [];
+        $buyers = [];
         foreach ($matrix as $userId => $products) {
             foreach ($products as $prodId => $value) {
-                $itemMatrix[$prodId][$userId] = $value;
+                if ($value > 0) {
+                    $buyers[$prodId][$userId] = true;
+                }
             }
         }
 
-        $productIds = array_keys($itemMatrix);
+        $productIds = array_keys($buyers);
         $numProducts = count($productIds);
 
         if ($numProducts < 2) {
             return ['similarities' => [], 'stats' => ['error' => 'Jumlah produk aktif kurang dari 2.']];
         }
 
+        $sizes = [];
+        foreach ($productIds as $pid) {
+            $sizes[$pid] = count($buyers[$pid]);
+        }
+
         $similarities = [];
-        $maxScore = 0;
-        $minScore = 1;
-        $totalScore = 0;
-        $savedPairsCount = 0;
+        $maxRaw = 0;
 
         for ($i = 0; $i < $numProducts; $i++) {
             for ($j = $i + 1; $j < $numProducts; $j++) {
                 $prodA = $productIds[$i];
                 $prodB = $productIds[$j];
 
-                $vectorA = $itemMatrix[$prodA];
-                $vectorB = $itemMatrix[$prodB];
-
-                $dotProduct = 0;
-                $normA = 0;
-                $normB = 0;
-                $coOccurrence = 0;
-
-                foreach ($vectorA as $userId => $valA) {
-                    $valB = $vectorB[$userId] ?? 0;
-                    $dotProduct += ($valA * $valB);
-                    $normA += ($valA * $valA);
-                    $normB += ($valB * $valB);
-                    if ($valA > 0 && $valB > 0) $coOccurrence++;
+                $intersection = count(array_intersect_key($buyers[$prodA], $buyers[$prodB]));
+                if ($intersection === 0) {
+                    continue;
                 }
 
-                $similarity = 0;
-                if ($normA > 0 && $normB > 0) {
-                    $similarity = $dotProduct / (sqrt($normA) * sqrt($normB));
-                }
-
-                if ($similarity > 0) {
-                    $similarities[] = [
-                        'product_a' => $prodA, 'product_b' => $prodB,
-                        'score' => $similarity, 'co_occurrence' => $coOccurrence,
-                    ];
-                    $maxScore = max($maxScore, $similarity);
-                    $minScore = min($minScore, $similarity);
-                    $totalScore += $similarity;
-                    $savedPairsCount++;
-                }
+                $dice = (2 * $intersection) / ($sizes[$prodA] + $sizes[$prodB]);
+                $maxRaw = max($maxRaw, $dice);
+                $similarities[] = [
+                    'product_a' => $prodA,
+                    'product_b' => $prodB,
+                    'score' => $dice,
+                    'co_occurrence' => $intersection,
+                ];
             }
+        }
+
+        if ($maxRaw > 0) {
+            foreach ($similarities as &$sim) {
+                $sim['score'] = $sim['score'] / $maxRaw;
+            }
+            unset($sim);
+        }
+
+        $savedPairsCount = count($similarities);
+        $totalScore = 0;
+        $maxScore = 0;
+        $minScore = 1;
+        foreach ($similarities as $sim) {
+            $totalScore += $sim['score'];
+            $maxScore = max($maxScore, $sim['score']);
+            $minScore = min($minScore, $sim['score']);
         }
 
         $expectedPairs = ($numProducts * ($numProducts - 1)) / 2;
@@ -407,9 +411,9 @@ class RecommenderService
     /**
      * Master orchestrator with cascading fallbacks
      */
-    public function getFullRecommendation(int $customerId, int $limit = 8): array
+    public function getFullRecommendation(?int $customerId, int $limit = 8): array
     {
-        $boughtProducts = $this->getBoughtProducts($customerId);
+        $boughtProducts = $customerId ? $this->getBoughtProducts($customerId) : [];
 
         if (empty($boughtProducts)) {
             $rated = $this->getBestSellerProducts($limit);
@@ -446,7 +450,7 @@ class RecommenderService
         return ['method' => 'Produk Tersedia (Fallback)', 'message' => 'Saat ini tidak ada rekomendasi khusus. Berikut produk yang tersedia.', 'data' => $this->getAvailableProducts($limit)];
     }
 
-    public function getPersonalRecommendations(int $id_user, int $limit = 6): array
+    public function getPersonalRecommendations(?int $id_user, int $limit = 6): array
     {
         return $this->getFullRecommendation($id_user, $limit)['data'];
     }
@@ -470,6 +474,63 @@ class RecommenderService
             'score' => $score,
             'created_at' => now(),
         ]);
+    }
+
+    public function logRecommendationItems(?int $id_user, array $items, string $source, string ...$scoreKeys): void
+    {
+        if (empty($items)) {
+            return;
+        }
+
+        try {
+            $id_user = $this->resolveLogUserId($id_user);
+
+            foreach ($items as $item) {
+                $score = 0.0;
+                foreach ($scoreKeys as $key) {
+                    if (isset($item[$key])) {
+                        $score = (float) $item[$key];
+                        break;
+                    }
+                }
+                $this->logRecommendation($id_user, (int) $item['id_product'], $source, $score);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Recommendation log failed: ' . $e->getMessage());
+        }
+    }
+
+    public function resolveLogUserId(?int $id_user = null): int
+    {
+        if ($id_user) {
+            return $id_user;
+        }
+
+        return $this->guestUserId();
+    }
+
+    private function guestUserId(): int
+    {
+        static $guestId = null;
+        if ($guestId !== null) {
+            return $guestId;
+        }
+
+        $email = config('app.recommendation_guest_email', 'guest@system.local');
+        $guestId = (int) DB::table('users')->where('email', $email)->value('id_user');
+
+        if (!$guestId) {
+            $guestId = (int) DB::table('users')->insertGetId([
+                'nama' => 'Guest',
+                'email' => $email,
+                'password' => bcrypt(bin2hex(random_bytes(16))),
+                'role' => 'pelanggan',
+                'status' => 'aktif',
+                'created_at' => now(),
+            ]);
+        }
+
+        return $guestId;
     }
 
     /**

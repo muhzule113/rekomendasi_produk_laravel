@@ -77,6 +77,7 @@ def run_pipeline(id_upload: int) -> None:
         df = read_file(path_file)
         col_map = detect_columns(df)
         print(f"  Kolom terdeteksi: {col_map}")
+        update_status(id_upload, 'memproses', {'total_baris': len(df)})
 
         # STEP 2: Cleaning
         print("\n[2/4] Cleaning & validasi data...")

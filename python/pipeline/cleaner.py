@@ -23,15 +23,6 @@ def get_valid_user_ids() -> set:
     return ids
 
 
-def lookup_user_by_email(email: str):
-    conn = pymysql.connect(**DB_CONFIG)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id_user FROM users WHERE email = %s AND status = 'aktif'", (email,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
-
-
 def parse_tanggal(val: str):
     if not val or str(val).strip() in ['', 'nan', 'NaT', 'None']:
         return None
@@ -123,16 +114,8 @@ def clean_dataframe(df: pd.DataFrame, col_map: dict) -> tuple:
             uid = int(float(str(raw_uid).strip()))
             cleaned['id_user'] = uid if uid in valid_users else 1
         except (ValueError, TypeError):
-            # id_user tidak ada di CSV — coba cari via email
-            if cleaned.get('email'):
-                found = lookup_user_by_email(cleaned['email'])
-                if found:
-                    cleaned['id_user'] = found
-                else:
-                    # Email belum terdaftar — tandai 0 untuk auto-create nanti
-                    cleaned['id_user'] = 0
-            else:
-                cleaned['id_user'] = 1
+            # id_user tidak ada di CSV — user_resolver akan lookup/create via email
+            cleaned['id_user'] = 0 if cleaned.get('email') else 1
 
         # --- metode_pembayaran (opsional) ---
         raw_metode = str(row.get(col_map.get('metode_pembayaran', ''), 'Tunai')).strip()

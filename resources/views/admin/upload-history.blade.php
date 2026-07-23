@@ -34,12 +34,17 @@
                         <h3 style="color:var(--primary);margin:0;">Detail Upload #{{ $id_upload }}</h3>
                         <p class="text-sm text-muted" style="margin-top:.25rem;">{{ $detail->nama_file_asli }}</p>
                     </div>
-                    <div>
+                    <div class="flex items-center gap-2">
                         @php
                             $badgeColors = ['menunggu'=>'#6b7280','memproses'=>'#f39c12','selesai'=>'#27ae60','gagal'=>'#e74c3c'];
                             $color = $badgeColors[$detail->status] ?? '#888';
                         @endphp
                         <span style="background:{{ $color }};color:#fff;padding:.25rem .85rem;border-radius:20px;font-size:.82rem;font-weight:600;">{{ strtoupper($detail->status) }}</span>
+                        @if (!in_array($detail->status, ['menunggu', 'memproses']))
+                        <button type="button" onclick="hapusRiwayatUpload({{ $id_upload }})" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca;">
+                            <i class="fa-solid fa-trash"></i> Hapus
+                        </button>
+                        @endif
                     </div>
                 </div>
 
@@ -231,7 +236,12 @@
                                 <span style="display:inline-block;background:{{ $bc }};color:#fff;padding:.2rem .65rem;border-radius:12px;font-size:.72rem;font-weight:600;">{{ $r->status }}</span>
                             </td>
                             <td class="text-xs text-muted">{{ !empty($r->uploaded_at) ? date('d M, H:i', strtotime($r->uploaded_at)) : '-' }}</td>
-                            <td><a href="?id={{ $r->id_upload }}" class="btn btn-outline btn-sm" style="padding:.25rem .6rem;font-size:.75rem;">Detail</a></td>
+                            <td style="white-space:nowrap;">
+                                <a href="?id={{ $r->id_upload }}" class="btn btn-outline btn-sm" style="padding:.25rem .6rem;font-size:.75rem;">Detail</a>
+                                @if (!in_array($r->status, ['menunggu', 'memproses']))
+                                <button type="button" onclick="hapusRiwayatUpload({{ $r->id_upload }})" class="btn btn-outline btn-sm" style="padding:.25rem .6rem;font-size:.75rem;color:#dc2626;border-color:#fecaca;margin-left:.25rem;">Hapus</button>
+                                @endif
+                            </td>
                         </tr>
                         @endforeach
                     @endif
@@ -251,3 +261,27 @@
     </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+function hapusRiwayatUpload(id) {
+    if (!confirm('Hapus riwayat upload #' + id + '? File dan log terkait akan dihapus permanen.')) return;
+    fetch("{{ url('admin/upload-history') }}/" + id, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res.ok) {
+            window.location.href = "{{ route('admin.upload-history') }}";
+        } else {
+            alert(res.pesan || 'Gagal menghapus riwayat upload.');
+        }
+    })
+    .catch(function() { alert('Gagal menghapus riwayat upload.'); });
+}
+</script>
+@endpush

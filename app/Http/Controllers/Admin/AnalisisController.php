@@ -64,11 +64,11 @@ class AnalisisController extends Controller
             ->first();
 
         $chartLabels = json_encode([
-            'Rendah<br>(0–0.15)',
-            'Sedang Rendah<br>(0.15–0.30)',
-            'Sedang<br>(0.30–0.50)',
-            'Sedang Tinggi<br>(0.50–0.70)',
-            'Tinggi<br>(0.70–1.00)',
+            'Rendah (0–0.15)',
+            'Sedang Rendah (0.15–0.30)',
+            'Sedang (0.30–0.50)',
+            'Sedang Tinggi (0.50–0.70)',
+            'Tinggi (0.70–1.00)',
         ]);
 
         $chartData = json_encode([

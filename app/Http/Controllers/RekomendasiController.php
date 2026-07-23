@@ -19,6 +19,9 @@ class RekomendasiController extends Controller
         $recommendations = $this->applyCartStock($recommendations, $cart, $stockMap);
         $popular = $this->applyCartStock($popular, $cart, $stockMap);
 
+        $recommender->logRecommendationItems($userId, $recommendations, 'CF_personal', 'hybrid_score', 'score');
+        $recommender->logRecommendationItems($userId, $popular, 'popular', 'avg_rating');
+
         return view('customer.rekomendasi', [
             'method' => $data['method'],
             'message' => $data['message'],

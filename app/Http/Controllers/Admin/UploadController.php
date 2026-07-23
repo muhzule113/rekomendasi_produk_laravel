@@ -45,11 +45,9 @@ class UploadController extends Controller
             'size'     => $file->getSize(),
         ];
 
-        if ($tab === 'produk') {
-            $result = $uploadService->handleUploadProduk($fileArray, auth()->id());
-        } else {
-            $result = $uploadService->handleUpload($fileArray, auth()->id());
-        }
+        $result = $tab === 'produk'
+            ? $uploadService->handleProdukUpload($fileArray, auth()->id())
+            : $uploadService->handleUpload($fileArray, auth()->id());
 
         if ($request->expectsJson()) {
             return response()->json($result);

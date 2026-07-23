@@ -68,4 +68,32 @@ class ProdukController extends Controller
             return redirect()->route('admin.produk')->with('error', 'Produk tidak bisa dihapus karena sudah ada di riwayat transaksi.');
         }
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []));
+        if (empty($ids)) {
+            return redirect()->route('admin.produk')->with('error', 'Pilih minimal satu produk.');
+        }
+
+        $deleted = 0;
+        $failed = 0;
+        foreach ($ids as $id) {
+            try {
+                DB::table('products')->where('id_product', $id)->delete();
+                $deleted++;
+            } catch (\Exception $e) {
+                $failed++;
+            }
+        }
+
+        return redirect()->route('admin.produk')->with(
+            $deleted > 0 ? 'success' : 'error',
+            $deleted > 0
+                ? ($failed > 0
+                    ? "{$deleted} produk dihapus. {$failed} gagal karena sudah ada di riwayat transaksi."
+                    : "{$deleted} produk berhasil dihapus.")
+                : 'Produk tidak bisa dihapus karena sudah ada di riwayat transaksi.'
+        );
+    }
 }

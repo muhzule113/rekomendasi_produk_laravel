@@ -77,6 +77,7 @@ class CheckoutController extends Controller
 
             DB::commit();
             session(['cart' => []]);
+            DB::table('cart')->where('id_user', $user->id_user)->delete();
 
             return response()->json([
                 'status'         => true,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\RecommenderService;
 use Illuminate\Support\Facades\DB;
 
 class ProdukController extends Controller
@@ -26,7 +27,9 @@ class ProdukController extends Controller
 
         if (!$product) abort(404);
 
-        $similarProducts = app(\App\Services\RecommenderService::class)->getProductSimilar($id, 4);
+        $recommender = app(RecommenderService::class);
+        $similarProducts = $recommender->getProductSimilar($id, 4);
+        $recommender->logRecommendationItems(auth()->id(), $similarProducts, 'CF_similarity', 'score');
 
         $sameCategory = DB::table('products')
             ->join('categories', 'products.id_category', '=', 'categories.id_category')

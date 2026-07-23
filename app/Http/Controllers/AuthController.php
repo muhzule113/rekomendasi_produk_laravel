@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -32,6 +33,10 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
+        if ($user->role === 'pelanggan') {
+            app(CartService::class)->restoreOnLogin((int) $user->id_user);
+        }
+
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard');
         }
@@ -54,7 +59,7 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'no_hp' => $validated['no_hp'],
             'alamat' => $validated['alamat'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role' => 'pelanggan',
             'status' => 'aktif',
         ]);

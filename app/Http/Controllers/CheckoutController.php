@@ -105,6 +105,7 @@ class CheckoutController extends Controller
             }
 
             session()->forget('cart');
+            DB::table('cart')->where('id_user', $user->id_user)->delete();
             DB::commit();
 
             if ($metode === 'Midtrans' && !empty(env('MIDTRANS_SERVER_KEY'))) {

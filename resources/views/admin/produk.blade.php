@@ -66,10 +66,17 @@
 </div>
 
 <div class="card">
+    <div id="bulk-action-bar" style="display:none; padding: .75rem 1rem; border-bottom: 1px solid var(--border-color); background: #fef2f2; align-items: center; gap: .75rem;">
+        <span class="text-sm" style="color:#991b1b;">Terpilih: <strong id="bulk-count">0</strong></span>
+        <button type="button" class="btn btn-sm" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca;" onclick="submitBulkDelete('formBulkProduk', { title: 'Hapus Produk Terpilih?', desc: 'Produk yang dihapus tidak dapat dikembalikan.', okLabel: 'Hapus Produk', loadingText: 'Menghapus produk...' })">
+            <i class="fa-solid fa-trash"></i> Hapus Terpilih
+        </button>
+    </div>
     <div class="table-overflow">
         <table>
             <thead>
                 <tr>
+                    <th style="width:40px;"><input type="checkbox" id="checkAllProduk" onchange="bulkToggleAll('checkAllProduk', 'ids[]')"></th>
                     <th>ID</th>
                     <th>Kategori</th>
                     <th>Nama Produk</th>
@@ -83,6 +90,7 @@
             <tbody>
                 @foreach($products as $p)
                 <tr>
+                    <td><input type="checkbox" class="bulk-check" name="ids[]" value="{{ $p->id_product }}" onchange="bulkUpdateBar('ids[]')"></td>
                     <td>{{ $p->id_product }}</td>
                     <td><span class="badge badge-navy">{{ $p->nama_category }}</span></td>
                     <td class="font-bold">{{ $p->nama_product }}</td>
@@ -124,6 +132,11 @@
         {!! \App\Helpers\Helpers::renderPagination($currentPage, $totalPages, request()->query()) !!}
     </div>
 </div>
+
+<form id="formBulkProduk" method="POST" action="{{ route('admin.produk.bulk-destroy') }}" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
 
 <!-- Modal Tambah -->
 <div id="modalAdd" class="modal-overlay">

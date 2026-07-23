@@ -158,4 +158,19 @@ class TransaksiController extends Controller
             'trx'   => $trx,
         ]);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []));
+        if (empty($ids)) {
+            return redirect()->route('admin.transaksi')->with('error', 'Pilih minimal satu transaksi.');
+        }
+
+        $deleted = DB::table('transactions')->whereIn('id_transaction', $ids)->delete();
+
+        return redirect()->route('admin.transaksi')->with(
+            'success',
+            $deleted > 0 ? "{$deleted} transaksi berhasil dihapus." : 'Tidak ada transaksi yang dihapus.'
+        );
+    }
 }

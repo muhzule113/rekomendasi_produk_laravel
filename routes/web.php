@@ -39,9 +39,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', \App\Http\Middleware
     Route::post('/produk', [\App\Http\Controllers\Admin\ProdukController::class, 'store'])->name('produk.store');
     Route::put('/produk/{id}', [\App\Http\Controllers\Admin\ProdukController::class, 'update'])->name('produk.update');
     Route::delete('/produk/{id}', [\App\Http\Controllers\Admin\ProdukController::class, 'destroy'])->name('produk.destroy');
+    Route::delete('/produk', [\App\Http\Controllers\Admin\ProdukController::class, 'bulkDestroy'])->name('produk.bulk-destroy');
     Route::get('/pelanggan', [\App\Http\Controllers\Admin\PelangganController::class, 'index'])->name('pelanggan');
+    Route::delete('/pelanggan', [\App\Http\Controllers\Admin\PelangganController::class, 'bulkDestroy'])->name('pelanggan.bulk-destroy');
     Route::get('/pelanggan/{id}/transaksi', [\App\Http\Controllers\Admin\PelangganController::class, 'transaksi'])->name('pelanggan.transaksi');
     Route::get('/transaksi', [\App\Http\Controllers\Admin\TransaksiController::class, 'index'])->name('transaksi');
+    Route::delete('/transaksi', [\App\Http\Controllers\Admin\TransaksiController::class, 'bulkDestroy'])->name('transaksi.bulk-destroy');
     Route::post('/transaksi/{id}/status', [\App\Http\Controllers\Admin\TransaksiController::class, 'updateStatus'])->name('transaksi.status');
     Route::get('/transaksi/{id}', [\App\Http\Controllers\Admin\TransaksiController::class, 'detail'])->name('transaksi.detail');
     Route::get('/analisis', [\App\Http\Controllers\Admin\AnalisisController::class, 'index'])->name('analisis');
@@ -49,6 +52,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', \App\Http\Middleware
     Route::get('/upload', [\App\Http\Controllers\Admin\UploadController::class, 'index'])->name('upload');
     Route::post('/upload', [\App\Http\Controllers\Admin\UploadController::class, 'store'])->name('upload.store');
     Route::get('/upload-history', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'index'])->name('upload-history');
+    Route::delete('/upload-history/{id}', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'destroy'])->name('upload-history.destroy');
     Route::post('/similarity', [\App\Http\Controllers\Api\SimilarityController::class, 'recalculate'])->name('similarity.recalculate');
     Route::post('/upload-data', [\App\Http\Controllers\Api\UploadController::class, 'store'])->name('upload-data.store');
     Route::get('/pipeline-status', [\App\Http\Controllers\Api\PipelineStatusController::class, 'show'])->name('pipeline-status');

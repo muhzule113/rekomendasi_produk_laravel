@@ -12,6 +12,7 @@ class SimilarityController extends Controller
 {
     public function recalculate(RecommenderService $service): JsonResponse
     {
+        @ini_set('memory_limit', '512M');
         $start_time = microtime(true);
 
         try {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\UploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -85,5 +86,20 @@ class UploadHistoryController extends Controller
             'total_pages_list' => $total_pages_list,
             'count_all'        => $count_all,
         ]);
+    }
+
+    public function destroy(int $id, UploadService $uploadService)
+    {
+        $result = $uploadService->deleteUpload($id);
+
+        if (request()->expectsJson()) {
+            return response()->json($result, $result['ok'] ? 200 : 422);
+        }
+
+        if ($result['ok']) {
+            return redirect()->route('admin.upload-history')->with('success', $result['pesan']);
+        }
+
+        return back()->with('error', $result['pesan']);
     }
 }

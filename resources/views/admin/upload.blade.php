@@ -92,7 +92,7 @@
         <p style="font-size:.8rem;color:#888;margin-top:.5rem;">
             Kolom wajib: <code>nama_product, harga, stok</code><br>
             Kolom opsional: <code>nama_category, deskripsi, status</code><br>
-            Kategori tersedia: <code>Bahan Kue, Kopi &amp; Teh, Bumbu Dapur, Snack, Bahan Pokok, Dairy &amp; Kue Premium</code>
+            Kategori baru di CSV akan otomatis dibuat jika belum ada di database.
         </p>
     </div>
 
@@ -191,23 +191,51 @@ function doUploadTransaksi() {
 }
 
 function pollStatusTransaksi(idUpload) {
+    var attempts = 0;
+    var maxAttempts = 60;
     var interval = setInterval(function() {
+        attempts++;
         fetch("{{ route('admin.pipeline-status') }}?action=status&id=" + idUpload)
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data || !data.id_upload) return;
                 var pct = data.total_baris > 0 ? Math.round(data.baris_diimport / data.total_baris * 100) : 0;
                 document.getElementById('progress-bar-transaksi').style.width = pct + '%';
-                document.getElementById('progress-text-transaksi').textContent =
-                    'Preprocessing... ' + (data.baris_diimport || 0) + ' / ' + (data.total_baris || '?') + ' baris diimport';
-                if (['selesai','gagal'].includes(data.status)) {
+                if (data.status === 'menunggu') {
+                    document.getElementById('progress-text-transaksi').textContent =
+                        'Menunggu pipeline dimulai... (' + attempts + ')';
+                } else if (data.status === 'memproses') {
+                    document.getElementById('progress-text-transaksi').textContent =
+                        'Preprocessing... ' + (data.baris_diimport || 0) + ' / ' + (data.total_baris || '?') + ' baris diimport';
+                } else if (data.status === 'gagal') {
                     clearInterval(interval);
                     document.getElementById('progress-text-transaksi').textContent =
-                        'Selesai: ' + data.baris_diimport + ' baris diimport, ' +
-                        data.baris_invalid + ' invalid, ' + data.baris_duplikat + ' duplikat';
+                        'Gagal: ' + (data.pesan_error || 'Preprocessing error.');
+                    document.getElementById('btn-upload-transaksi').disabled = false;
+                    loadRiwayatTransaksi();
+                } else if (data.status === 'selesai') {
+                    clearInterval(interval);
+                    document.getElementById('progress-bar-transaksi').style.width = '100%';
+                    document.getElementById('progress-text-transaksi').textContent =
+                        'Selesai: ' + (data.baris_diimport || 0) + ' baris diimport, ' +
+                        (data.baris_invalid || 0) + ' invalid, ' + (data.baris_duplikat || 0) + ' duplikat';
                     loadRiwayatTransaksi();
                 }
+            })
+            .catch(function() {
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    document.getElementById('progress-text-transaksi').textContent =
+                        'Gagal memeriksa status. Periksa log pipeline di storage/app/uploads/logs.';
+                    document.getElementById('btn-upload-transaksi').disabled = false;
+                }
             });
+        if (attempts >= maxAttempts) {
+            clearInterval(interval);
+            document.getElementById('progress-text-transaksi').textContent =
+                'Pipeline tidak merespons. Periksa log di storage/app/uploads/logs/pipeline_' + idUpload + '.log';
+            document.getElementById('btn-upload-transaksi').disabled = false;
+        }
     }, 2000);
 }
 
@@ -221,7 +249,7 @@ function loadRiwayatTransaksi() {
             var html = '<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--secondary);">';
             html += '<th style="padding:.6rem;text-align:left;">File</th><th style="padding:.6rem;text-align:center;">Total</th>';
             html += '<th style="padding:.6rem;text-align:center;">Imported</th><th style="padding:.6rem;text-align:center;">Invalid</th>';
-            html += '<th style="padding:.6rem;text-align:center;">Status</th><th style="padding:.6rem;text-align:left;">Waktu</th>';
+            html += '<th style="padding:.6rem;text-align:center;">Status</th><th style="padding:.6rem;text-align:left;">Waktu</th><th style="padding:.6rem;text-align:center;">Aksi</th>';
             html += '</tr></thead><tbody>';
             data.forEach(function(r) {
                 var c = colors[r.status] || '#888';
@@ -231,7 +259,11 @@ function loadRiwayatTransaksi() {
                 html += '<td style="padding:.6rem;text-align:center;color:#27ae60;font-weight:700;">' + (r.baris_diimport||0) + '</td>';
                 html += '<td style="padding:.6rem;text-align:center;color:#e74c3c;">' + (r.baris_invalid||0) + '</td>';
                 html += '<td style="padding:.6rem;text-align:center;"><span style="background:'+c+';color:#fff;padding:.2rem .7rem;border-radius:20px;font-size:.75rem;">' + r.status + '</span></td>';
-                html += '<td style="padding:.6rem;font-size:.82rem;color:#888;">' + r.uploaded_at + '</td></tr>';
+                html += '<td style="padding:.6rem;font-size:.82rem;color:#888;">' + r.uploaded_at + '</td>';
+                html += '<td style="padding:.6rem;text-align:center;white-space:nowrap;">';
+                html += '<a href="{{ route('admin.upload-history') }}?id=' + r.id_upload + '" style="color:var(--primary);font-weight:600;font-size:.82rem;margin-right:.5rem;">Detail</a>';
+                html += '<button type="button" onclick="hapusRiwayatUpload(' + r.id_upload + ', \'transaksi\')" style="background:none;border:none;color:#dc2626;font-weight:600;font-size:.82rem;cursor:pointer;">Hapus</button>';
+                html += '</td></tr>';
             });
             html += '</tbody></table>';
             el.innerHTML = html;
@@ -280,6 +312,8 @@ function doUploadProduk() {
                     document.getElementById('progress-text-produk').textContent += ' (' + res.baris_valid + ' sukses, ' + res.baris_invalid + ' gagal)';
                 }
                 document.getElementById('btn-upload-produk').disabled = false;
+                selectedFileProduk = null;
+                document.getElementById('file-info-produk').style.display = 'none';
             } else {
                 document.getElementById('progress-text-produk').textContent = res.pesan || 'Gagal memproses.';
                 document.getElementById('btn-upload-produk').disabled = false;
@@ -323,7 +357,10 @@ function loadRiwayatProduk() {
                 html += '<td style="padding:.6rem;text-align:center;color:#e74c3c;">' + (r.baris_invalid||0) + '</td>';
                 html += '<td style="padding:.6rem;text-align:center;"><span style="background:'+c+';color:#fff;padding:.2rem .7rem;border-radius:20px;font-size:.75rem;">' + r.status + '</span></td>';
                 html += '<td style="padding:.6rem;font-size:.82rem;color:#888;">' + r.uploaded_at + '</td>';
-                html += '<td style="padding:.6rem;text-align:center;"><a href="{{ route('admin.upload-history') }}?id=' + r.id_upload + '" style="color:var(--primary);font-weight:600;font-size:.82rem;">Detail</a></td></tr>';
+                html += '<td style="padding:.6rem;text-align:center;white-space:nowrap;">';
+                html += '<a href="{{ route('admin.upload-history') }}?id=' + r.id_upload + '" style="color:var(--primary);font-weight:600;font-size:.82rem;margin-right:.5rem;">Detail</a>';
+                html += '<button type="button" onclick="hapusRiwayatUpload(' + r.id_upload + ', \'produk\')" style="background:none;border:none;color:#dc2626;font-weight:600;font-size:.82rem;cursor:pointer;">Hapus</button>';
+                html += '</td></tr>';
             });
             html += '</tbody></table>';
             el.innerHTML = html;
@@ -333,4 +370,27 @@ function loadRiwayatProduk() {
 loadRiwayatProduk();
 </script>
 @endif
+<script>
+function hapusRiwayatUpload(id, sumber) {
+    if (!confirm('Hapus riwayat upload #' + id + '? File dan log terkait akan dihapus permanen.')) return;
+    fetch("{{ url('admin/upload-history') }}/" + id, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res.ok) {
+            if (sumber === 'produk' && typeof loadRiwayatProduk === 'function') loadRiwayatProduk();
+            else if (sumber === 'transaksi' && typeof loadRiwayatTransaksi === 'function') loadRiwayatTransaksi();
+            else window.location.href = "{{ route('admin.upload-history') }}";
+        } else {
+            alert(res.pesan || 'Gagal menghapus riwayat upload.');
+        }
+    })
+    .catch(function() { alert('Gagal menghapus riwayat upload.'); });
+}
+</script>
 @endpush

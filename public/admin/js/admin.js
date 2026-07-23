@@ -157,6 +157,49 @@ function confirmDeleteProduct(form) {
     });
 }
 
+function bulkToggleAll(masterId, name) {
+    const checked = document.getElementById(masterId).checked;
+    document.querySelectorAll(`input.bulk-check[name="${name}"]`).forEach(el => { el.checked = checked; });
+    bulkUpdateBar(name);
+}
+
+function bulkUpdateBar(name, barId = 'bulk-action-bar', countId = 'bulk-count') {
+    const n = document.querySelectorAll(`input.bulk-check[name="${name}"]:checked`).length;
+    const bar = document.getElementById(barId);
+    if (bar) bar.style.display = n > 0 ? 'flex' : 'none';
+    const cnt = document.getElementById(countId);
+    if (cnt) cnt.textContent = n;
+}
+
+function submitBulkDelete(formId, opts) {
+    const name = opts.checkboxName || 'ids[]';
+    const ids = [...document.querySelectorAll(`input.bulk-check[name="${name}"]:checked`)].map(el => el.value);
+    if (!ids.length) {
+        adminToast('Pilih minimal satu data.', 'info');
+        return;
+    }
+
+    adminConfirm({
+        type: 'danger',
+        title: opts.title || 'Hapus Data Terpilih?',
+        desc: opts.desc || `Yakin hapus ${ids.length} data? Tindakan ini tidak dapat dibatalkan.`,
+        okLabel: opts.okLabel || 'Hapus',
+        onConfirm: () => {
+            const form = document.getElementById(formId);
+            form.querySelectorAll('input[name="ids[]"]').forEach(el => el.remove());
+            ids.forEach(id => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'ids[]';
+                inp.value = id;
+                form.appendChild(inp);
+            });
+            adminShowLoading(opts.loadingText || 'Menghapus...');
+            form.submit();
+        }
+    });
+}
+
 // Konfirmasi logout yang menampilkan modal custom
 function confirmLogout() {
     adminConfirm({

@@ -1,0 +1,2 @@
+tanggal,id_product,qty,harga_satuan,email,no_hp,metode_pembayaran,status_pesanan
+2025-01-15,1,2,25000,pembeli@example.com,081234567890,Transfer,Selesai

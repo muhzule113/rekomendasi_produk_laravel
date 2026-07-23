@@ -126,8 +126,10 @@ return [
 
     'max_upload_mb' => 10,
 
-    'python_bin' => env('PYTHON_BIN', 'python'),
+    'python_bin' => env('PYTHON_BIN') ?: 'python',
 
-    'pipeline_script' => env('PIPELINE_SCRIPT', base_path('python/pipeline/pipeline_runner.py')),
+    'pipeline_script' => env('PIPELINE_SCRIPT') ?: base_path('python/pipeline/pipeline_runner.py'),
+
+    'recommendation_guest_email' => env('RECOMMENDATION_GUEST_EMAIL', 'guest@system.local'),
 
 ];

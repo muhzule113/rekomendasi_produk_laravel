@@ -51,4 +51,48 @@ class PelangganController extends Controller
             'data' => $transactions,
         ]);
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        $ids = array_filter((array) $request->input('ids', []));
+        if (empty($ids)) {
+            return redirect()->route('admin.pelanggan')->with('error', 'Pilih minimal satu pelanggan.');
+        }
+
+        $deleted = 0;
+        $failed = 0;
+        foreach ($ids as $id) {
+            if ((int) $id === (int) auth()->id()) {
+                $failed++;
+                continue;
+            }
+
+            $user = DB::table('users')->where('id_user', $id)->where('role', 'pelanggan')->first();
+            if (!$user) {
+                $failed++;
+                continue;
+            }
+
+            if (DB::table('transactions')->where('id_user', $id)->exists()) {
+                $failed++;
+                continue;
+            }
+
+            try {
+                DB::table('users')->where('id_user', $id)->delete();
+                $deleted++;
+            } catch (\Exception $e) {
+                $failed++;
+            }
+        }
+
+        return redirect()->route('admin.pelanggan')->with(
+            $deleted > 0 ? 'success' : 'error',
+            $deleted > 0
+                ? ($failed > 0
+                    ? "{$deleted} pelanggan dihapus. {$failed} gagal karena masih punya riwayat transaksi."
+                    : "{$deleted} pelanggan berhasil dihapus.")
+                : 'Pelanggan tidak bisa dihapus karena masih punya riwayat transaksi.'
+        );
+    }
 }

@@ -63,10 +63,17 @@
 </div>
 
 <div class="card">
+    <div id="bulk-action-bar" style="display:none; padding: .75rem 1rem; border-bottom: 1px solid var(--border-color); background: #fef2f2; align-items: center; gap: .75rem;">
+        <span class="text-sm" style="color:#991b1b;">Terpilih: <strong id="bulk-count">0</strong></span>
+        <button type="button" class="btn btn-sm" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca;" onclick="submitBulkDelete('formBulkTransaksi', { title: 'Hapus Transaksi Terpilih?', desc: 'Transaksi yang dihapus tidak dapat dikembalikan.', okLabel: 'Hapus Transaksi', loadingText: 'Menghapus transaksi...' })">
+            <i class="fa-solid fa-trash"></i> Hapus Terpilih
+        </button>
+    </div>
     <div class="table-overflow">
         <table>
             <thead>
                 <tr>
+                    <th style="width:40px;"><input type="checkbox" id="checkAllTransaksi" onchange="bulkToggleAll('checkAllTransaksi', 'ids[]')"></th>
                     <th>ID Trx</th>
                     <th>Pelanggan</th>
                     <th>Tanggal</th>
@@ -79,10 +86,11 @@
             </thead>
             <tbody>
                 @if(empty($transactions))
-                <tr><td colspan="8" class="text-center py-4">Tidak ada data transaksi.</td></tr>
+                <tr><td colspan="9" class="text-center py-4">Tidak ada data transaksi.</td></tr>
                 @else
                     @foreach($transactions as $t)
                     <tr>
+                        <td><input type="checkbox" class="bulk-check" name="ids[]" value="{{ $t->id_transaction }}" onchange="bulkUpdateBar('ids[]')"></td>
                         <td class="font-bold">#TRX-{{ str_pad($t->id_transaction, 5, '0', STR_PAD_LEFT) }}</td>
                         <td>{{ $t->nama }}</td>
                         <td>{{ date('d M Y H:i', strtotime($t->tanggal)) }}</td>
@@ -137,6 +145,11 @@
         {!! \App\Helpers\Helpers::renderPagination($currentPage, $totalPages, request()->query()) !!}
     </div>
 </div>
+
+<form id="formBulkTransaksi" method="POST" action="{{ route('admin.transaksi.bulk-destroy') }}" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
 
 <!-- Hidden form for status update -->
 <form id="formUpdateStatus" method="POST" action="" style="display:none;">

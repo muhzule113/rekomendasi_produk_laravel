@@ -19,13 +19,7 @@ class RekomendasiController extends Controller
         switch ($action) {
             case 'similar':
                 $data = $recommender->getProductSimilar($id_product, $limit);
-                if ($id_user && !empty($data)) {
-                    foreach ($data as $item) {
-                        $recommender->logRecommendation(
-                            $id_user, $item['id_product'], 'CF_similarity', $item['score'] ?? 0
-                        );
-                    }
-                }
+                $recommender->logRecommendationItems($id_user, $data, 'CF_similarity', 'score');
                 return response()->json(['status' => 'ok', 'data' => $data]);
 
             case 'personal':
@@ -37,25 +31,12 @@ class RekomendasiController extends Controller
                     ]);
                 }
                 $data = $recommender->getPersonalRecommendations($id_user, $limit);
-                if (!empty($data)) {
-                    foreach ($data as $item) {
-                        $recommender->logRecommendation(
-                            $id_user, $item['id_product'], 'CF_personal',
-                            $item['hybrid_score'] ?? $item['score'] ?? 0
-                        );
-                    }
-                }
+                $recommender->logRecommendationItems($id_user, $data, 'CF_personal', 'hybrid_score', 'score');
                 return response()->json(['status' => 'ok', 'data' => $data]);
 
             case 'popular':
                 $data = $recommender->getPopularProducts($limit);
-                if ($id_user && !empty($data)) {
-                    foreach ($data as $item) {
-                        $recommender->logRecommendation(
-                            $id_user, $item['id_product'], 'popular', $item['avg_rating'] ?? 0
-                        );
-                    }
-                }
+                $recommender->logRecommendationItems($id_user, $data, 'popular', 'avg_rating');
                 return response()->json(['status' => 'ok', 'data' => $data]);
 
             default:
