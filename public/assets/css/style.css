@@ -459,8 +459,12 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .product-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
 .product-card-image {
   height: 10rem; background: var(--secondary);
-  display: grid; place-items: center; font-size: 3rem;
-  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; position: relative;
+  overflow: hidden; flex-shrink: 0;
+}
+.product-card-image img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .product-card-badge {
   position: absolute; top: 0.625rem; left: 0.625rem;

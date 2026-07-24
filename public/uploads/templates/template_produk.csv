@@ -1,2 +1,2 @@
-nama_product,harga,stok,nama_category,deskripsi,status
-Tepung Terigu 1kg,15000,50,Bahan Kue,Tepung terigu premium,aktif
+nama_product,harga,stok,nama_category,deskripsi,status,foto
+Tepung Terigu 1kg,15000,50,Bahan Kue,Tepung terigu premium,aktif,products/contoh.jpg

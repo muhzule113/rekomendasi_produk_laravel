@@ -38,8 +38,12 @@ function starIconsDetail(int $rating): string {
     <div class="container">
         <div class="card card-body" style="display:flex;flex-wrap:wrap;gap:2rem;">
             <!-- Left: Image Box -->
-            <div style="flex:1;min-width:300px;background:var(--secondary);border-radius:var(--radius);display:grid;place-items:center;min-height:300px;font-size:6rem;">
-                {{ getEmojiDetail($product->nama_category, $emojiMap) }}
+            <div style="flex:1;min-width:300px;background:var(--secondary);border-radius:var(--radius);display:grid;place-items:center;min-height:300px;font-size:6rem;overflow:hidden;">
+                @if($product->foto)
+                    <img src="{{ asset('storage/'.$product->foto) }}" alt="{{ $product->nama_product }}" style="width:100%;height:100%;min-height:300px;object-fit:cover;">
+                @else
+                    {{ getEmojiDetail($product->nama_category, $emojiMap) }}
+                @endif
             </div>
 
             <!-- Right: Details -->
@@ -110,7 +114,11 @@ function starIconsDetail(int $rating): string {
             <div class="product-card" style="background:white;">
                 <div class="product-card-image">
                     <span class="product-card-badge">{{ $p['nama_category'] }}</span>
-                    <span style="font-size:3rem;">{{ getEmojiDetail($p['nama_category'], $emojiMap) }}</span>
+                    @if(!empty($p['foto']))
+                        <img src="{{ asset('storage/'.$p['foto']) }}" alt="{{ $p['nama_product'] }}">
+                    @else
+                        <span style="font-size:3rem;">{{ getEmojiDetail($p['nama_category'], $emojiMap) }}</span>
+                    @endif
                 </div>
                 <div class="product-card-body">
                     <div class="product-card-name">{{ $p['nama_product'] }}</div>
@@ -158,7 +166,11 @@ function starIconsDetail(int $rating): string {
             <div class="product-card">
                 <div class="product-card-image">
                     <span class="product-card-badge">{{ $p->nama_category }}</span>
-                    <span style="font-size:3rem;">{{ getEmojiDetail($p->nama_category, $emojiMap) }}</span>
+                    @if($p->foto)
+                        <img src="{{ asset('storage/'.$p->foto) }}" alt="{{ $p->nama_product }}">
+                    @else
+                        <span style="font-size:3rem;">{{ getEmojiDetail($p->nama_category, $emojiMap) }}</span>
+                    @endif
                 </div>
                 <div class="product-card-body">
                     <div class="product-card-name">{{ $p->nama_product }}</div>

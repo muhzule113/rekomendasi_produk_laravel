@@ -91,7 +91,9 @@
            style="color:var(--primary);" download>Download Template CSV</a>
         <p style="font-size:.8rem;color:#888;margin-top:.5rem;">
             Kolom wajib: <code>nama_product, harga, stok</code><br>
-            Kolom opsional: <code>nama_category, deskripsi, status</code><br>
+            Kolom opsional: <code>nama_category, deskripsi, status, foto</code><br>
+            Kolom <code>foto</code>: path relatif di <code>storage/app/public</code>
+            (contoh <code>products/nama.jpg</code>). File gambar harus sudah ada di folder itu.<br>
             Kategori baru di CSV akan otomatis dibuat jika belum ada di database.
         </p>
     </div>

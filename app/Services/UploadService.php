@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class UploadService
 {
@@ -220,12 +221,24 @@ class UploadService
             $status = isset($colMap['status'])
                 ? strtolower(trim((string) ($data[$colMap['status']] ?? 'aktif')))
                 : 'aktif';
+            $fotoRaw = isset($colMap['foto'])
+                ? trim((string) ($data[$colMap['foto']] ?? ''))
+                : '';
 
             $rowErrors = [];
             if ($nama === '') $rowErrors[] = 'nama_product wajib diisi';
             if ($harga === null || $harga < 0) $rowErrors[] = 'harga tidak valid';
             if ($stok === null || $stok < 0 || floor($stok) != $stok) $rowErrors[] = 'stok tidak valid';
             if (!in_array($status, ['aktif', 'nonaktif'], true)) $rowErrors[] = 'status harus aktif/nonaktif';
+
+            $fotoPath = null;
+            $fotoNote = null;
+            if ($fotoRaw !== '') {
+                $fotoPath = $this->resolvePublicFotoPath($fotoRaw);
+                if ($fotoPath === null) {
+                    $fotoNote = "foto tidak ditemukan di storage/app/public: {$fotoRaw}";
+                }
+            }
 
             $idCategory = $this->resolveCategoryId($namaCategory, $categories, $defaultCategoryId);
 
@@ -252,6 +265,9 @@ class UploadService
                 'deskripsi' => $deskripsi ?: null,
                 'status' => $status,
             ];
+            if ($fotoPath !== null) {
+                $payload['foto'] = $fotoPath;
+            }
 
             $existing = DB::table('products')->where('nama_product', $nama)->first();
             if ($existing) {
@@ -263,12 +279,18 @@ class UploadService
             }
 
             $valid++;
+            $keterangan = $existing ? 'Produk diupdate' : 'Produk baru ditambahkan';
+            if ($fotoNote) {
+                $keterangan .= '; ' . $fotoNote;
+            } elseif ($fotoPath) {
+                $keterangan .= '; foto=' . $fotoPath;
+            }
             $logs[] = [
                 'id_upload' => $id_upload,
                 'nomor_baris' => $nomorBaris,
                 'status_baris' => 'imported',
                 'data_mentah' => json_encode($data, JSON_UNESCAPED_UNICODE),
-                'keterangan' => $existing ? 'Produk diupdate' : 'Produk baru ditambahkan',
+                'keterangan' => $keterangan,
                 'created_at' => now(),
             ];
         }
@@ -298,6 +320,7 @@ class UploadService
             'nama_category' => ['nama_category', 'nama category', 'kategori', 'category', 'nama_kategori'],
             'deskripsi' => ['deskripsi', 'description', 'desc'],
             'status' => ['status'],
+            'foto' => ['foto', 'gambar', 'image', 'photo', 'path_foto', 'path_gambar'],
         ];
 
         $cols = [];
@@ -316,6 +339,33 @@ class UploadService
         }
 
         return $map;
+    }
+
+    /**
+     * Resolve CSV foto value to a path relative to storage/app/public.
+     * Accepts: products/foo.jpg | foo.jpg | storage/products/foo.jpg | public/storage/products/foo.jpg
+     */
+    private function resolvePublicFotoPath(string $raw): ?string
+    {
+        $path = str_replace('\\', '/', trim($raw));
+        $path = preg_replace('#^(storage/app/public/|public/storage/|storage/|public/)#i', '', $path) ?? $path;
+        $path = ltrim($path, '/');
+        if ($path === '' || str_contains($path, '..')) {
+            return null;
+        }
+
+        $candidates = [$path];
+        if (!str_starts_with($path, 'products/')) {
+            $candidates[] = 'products/' . basename($path);
+        }
+
+        foreach ($candidates as $candidate) {
+            if (Storage::disk('public')->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function resolveCategoryId(string $namaCategory, array &$categories, int &$defaultCategoryId): int
@@ -399,10 +449,10 @@ class UploadService
             $pythonBin = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' ? 'python' : 'python3';
         }
 
-        $pipelineScript = config('app.pipeline_script') ?: base_path('python/pipeline/pipeline_runner.py');
-        $pipelineScript = str_starts_with($pipelineScript, DIRECTORY_SEPARATOR)
-            ? $pipelineScript
-            : base_path($pipelineScript);
+        $pipelineScript = config('app.pipeline_script') ?: 'python/pipeline/pipeline_runner.py';
+        if (!is_file($pipelineScript)) {
+            $pipelineScript = base_path($pipelineScript);
+        }
 
         if (!is_file($pipelineScript)) {
             DB::table('data_uploads')->where('id_upload', $id_upload)->update([

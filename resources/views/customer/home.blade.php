@@ -80,7 +80,11 @@
             <div class="product-card">
                 <div class="product-card-image">
                     <span class="product-card-badge">{{ $p->nama_category }}</span>
-                    <span style="font-size:3rem;">{{ $emoji }}</span>
+                    @if($p->foto)
+                        <img src="{{ asset('storage/'.$p->foto) }}" alt="{{ $p->nama_product }}">
+                    @else
+                        <span style="font-size:3rem;">{{ $emoji }}</span>
+                    @endif
                 </div>
                 <div class="product-card-body">
                     <div class="product-card-name">{{ $p->nama_product }}</div>

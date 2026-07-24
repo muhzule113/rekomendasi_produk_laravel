@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProdukController extends Controller
 {
@@ -34,27 +35,51 @@ class ProdukController extends Controller
 
     public function store(Request $request)
     {
-        DB::table('products')->insert([
+        $request->validate([
+            'foto' => 'nullable|image|max:2048',
+        ]);
+
+        $data = [
             'nama_product' => $request->input('nama_product'),
             'id_category'  => $request->input('id_category'),
             'harga'        => $request->input('harga'),
             'stok'         => $request->input('stok'),
             'deskripsi'    => $request->input('deskripsi'),
-        ]);
+        ];
+
+        if ($request->hasFile('foto')) {
+            $data['foto'] = $request->file('foto')->store('products', 'public');
+        }
+
+        DB::table('products')->insert($data);
 
         return redirect()->route('admin.produk')->with('success', 'Produk berhasil ditambahkan.');
     }
 
     public function update(Request $request, $id)
     {
-        DB::table('products')->where('id_product', $id)->update([
+        $request->validate([
+            'foto' => 'nullable|image|max:2048',
+        ]);
+
+        $data = [
             'nama_product' => $request->input('nama_product'),
             'id_category'  => $request->input('id_category'),
             'harga'        => $request->input('harga'),
             'stok'         => $request->input('stok'),
             'deskripsi'    => $request->input('deskripsi'),
             'status'       => $request->input('status'),
-        ]);
+        ];
+
+        if ($request->hasFile('foto')) {
+            $old = DB::table('products')->where('id_product', $id)->value('foto');
+            if ($old) {
+                Storage::disk('public')->delete($old);
+            }
+            $data['foto'] = $request->file('foto')->store('products', 'public');
+        }
+
+        DB::table('products')->where('id_product', $id)->update($data);
 
         return redirect()->route('admin.produk')->with('success', 'Produk berhasil diupdate.');
     }
@@ -62,7 +87,11 @@ class ProdukController extends Controller
     public function destroy($id)
     {
         try {
+            $foto = DB::table('products')->where('id_product', $id)->value('foto');
             DB::table('products')->where('id_product', $id)->delete();
+            if ($foto) {
+                Storage::disk('public')->delete($foto);
+            }
             return redirect()->route('admin.produk')->with('success', 'Produk berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->route('admin.produk')->with('error', 'Produk tidak bisa dihapus karena sudah ada di riwayat transaksi.');

@@ -56,6 +56,14 @@
 const emojiMap = {'Sembako':'🛒','Makanan Instan':'🍜','Minuman':'🧃','Kebersihan':'🧼','Kebutuhan Mandi & Cuci':'🧴'};
 function getEmoji(cat) { return emojiMap[cat] || '📦'; }
 
+function escapeHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function productImageHtml(p) {
+    if (!p.foto) return `<span style="font-size:3rem;">${getEmoji(p.nama_category)}</span>`;
+    return `<img src="/storage/${encodeURI(p.foto)}" alt="${escapeHtml(p.nama_product)}">`;
+}
+
 function starHtml(avgRating, reviewCount) {
     if (!reviewCount || reviewCount < 1) return '';
     const full = Math.floor(avgRating), half = avgRating - full >= 0.5 ? 1 : 0, empty = 5 - full - half;
@@ -111,9 +119,9 @@ async function loadProducts() {
                 ? `<button id="btn-${p.id_product}" disabled class="btn btn-primary btn-sm" style="opacity:0.5;cursor:not-allowed;"><i class="fa-solid fa-box-open"></i> Habis</button>`
                 : `{!! Auth::check() && Auth::user()->role === 'admin' ? '<button id="btn-${p.id_product}" disabled class="btn btn-primary btn-sm" style="opacity:0.5;cursor:not-allowed;"><i class="fa-solid fa-lock"></i> Admin</button>' : "<button id=\"btn-\${p.id_product}\" onclick=\"addToCart(\${p.id_product})\" class=\"btn btn-primary btn-sm\"><i class=\"fa-solid fa-cart-plus\"></i> Tambah</button>" !!}`;
             grid.innerHTML += `<div class="product-card" id="card-${p.id_product}">
-                <div class="product-card-image"><span class="product-card-badge">${p.nama_category}</span><span style="font-size:3rem;">${getEmoji(p.nama_category)}</span></div>
+                <div class="product-card-image"><span class="product-card-badge">${escapeHtml(p.nama_category)}</span>${productImageHtml(p)}</div>
                 <div class="product-card-body">
-                    <div class="product-card-name">${p.nama_product}</div>
+                    <div class="product-card-name">${escapeHtml(p.nama_product)}</div>
                     <div class="product-card-meta">${starHtml(p.avg_rating, p.review_count)}${p.review_count > 0 ? '<span>&middot;</span>' : ''}<span>Terjual ${p.terjual}</span></div>
                     <div class="product-card-price">${formatRupiah(p.harga)}</div>
                     <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted-foreground);margin-top:.25rem;">

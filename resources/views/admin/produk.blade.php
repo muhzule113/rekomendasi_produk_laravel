@@ -78,6 +78,7 @@
                 <tr>
                     <th style="width:40px;"><input type="checkbox" id="checkAllProduk" onchange="bulkToggleAll('checkAllProduk', 'ids[]')"></th>
                     <th>ID</th>
+                    <th>Gambar</th>
                     <th>Kategori</th>
                     <th>Nama Produk</th>
                     <th>Harga</th>
@@ -92,6 +93,13 @@
                 <tr>
                     <td><input type="checkbox" class="bulk-check" name="ids[]" value="{{ $p->id_product }}" onchange="bulkUpdateBar('ids[]')"></td>
                     <td>{{ $p->id_product }}</td>
+                    <td>
+                        @if($p->foto)
+                            <img src="{{ asset('storage/'.$p->foto) }}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">
+                        @else
+                            <span class="text-muted" style="font-size:.75rem;">—</span>
+                        @endif
+                    </td>
                     <td><span class="badge badge-navy">{{ $p->nama_category }}</span></td>
                     <td class="font-bold">{{ $p->nama_product }}</td>
                     <td>{{ \App\Helpers\Helpers::formatRupiah($p->harga) }}</td>
@@ -143,7 +151,7 @@
     <div class="modal-card">
         <div class="card-body">
             <h3 class="mb-4">Tambah Produk</h3>
-            <form method="POST" action="{{ route('admin.produk.store') }}" onsubmit="adminShowLoading('Menyimpan produk...')">
+            <form method="POST" action="{{ route('admin.produk.store') }}" enctype="multipart/form-data" onsubmit="adminShowLoading('Menyimpan produk...')">
                 @csrf
                 <div class="form-group">
                     <label class="form-label">Nama Produk</label>
@@ -168,6 +176,10 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Gambar Produk</label>
+                    <input type="file" name="foto" class="form-control" accept="image/*">
+                </div>
+                <div class="form-group">
                     <label class="form-label">Deskripsi</label>
                     <textarea name="deskripsi" class="form-control" rows="3"></textarea>
                 </div>
@@ -185,7 +197,7 @@
     <div class="modal-card">
         <div class="card-body">
             <h3 class="mb-4">Edit Produk</h3>
-            <form method="POST" id="formEdit" onsubmit="adminShowLoading('Menyimpan perubahan...')">
+            <form method="POST" id="formEdit" enctype="multipart/form-data" onsubmit="adminShowLoading('Menyimpan perubahan...')">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="id_product" id="edit_id_product">
@@ -210,6 +222,12 @@
                         <label class="form-label">Stok</label>
                         <input type="number" name="stok" id="edit_stok" class="form-control" required>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Gambar Produk</label>
+                    <div id="edit_foto_preview" style="margin-bottom:.5rem;"></div>
+                    <input type="file" name="foto" class="form-control" accept="image/*">
+                    <small class="text-muted">Kosongkan jika tidak ingin mengubah gambar.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Deskripsi</label>
@@ -242,6 +260,10 @@ function editProduct(p) {
     document.getElementById('edit_stok').value = p.stok;
     document.getElementById('edit_deskripsi').value = p.deskripsi || '';
     document.getElementById('edit_status').value = p.status;
+    const preview = document.getElementById('edit_foto_preview');
+    preview.innerHTML = p.foto
+        ? `<img src="{{ asset('storage') }}/${p.foto}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:6px;">`
+        : '<span class="text-muted" style="font-size:.8rem;">Belum ada gambar</span>';
     document.getElementById('formEdit').action = "{{ route('admin.produk.update', '__ID__') }}".replace('__ID__', p.id_product);
     adminModalOpen('modalEdit');
 }
