@@ -23,6 +23,11 @@ mkdir -p storage/app/public \
   bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 
+if [ -x /opt/venv/bin/python ]; then
+  /opt/venv/bin/python -c "import pandas, sklearn, pymysql" 2>/dev/null \
+    || echo "WARN: Python pipeline deps missing"
+fi
+
 # skip cache/migrate on queue worker
 case " $* " in
   *"queue:work"*)

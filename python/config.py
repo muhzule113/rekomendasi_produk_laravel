@@ -1,8 +1,10 @@
+import os
+
 DB_CONFIG = {
-    'host':     'localhost',
-    'user':     'root',
-    'password': 'root',
-    'database': 'db_sinar_manis',
+    'host':     os.getenv('DB_HOST', 'localhost'),
+    'user':     os.getenv('DB_USERNAME', 'root'),
+    'password': os.getenv('DB_PASSWORD', 'root'),
+    'database': os.getenv('DB_DATABASE', 'db_sinar_manis'),
     'charset':  'utf8mb4',
 }
 
@@ -12,7 +14,6 @@ CF_CONFIG = {
     'batch_size':  1000,
 }
 
-import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_RAW_DIR  = os.path.join(BASE_DIR, 'storage', 'app', 'uploads', 'raw')
 UPLOAD_DONE_DIR = os.path.join(BASE_DIR, 'storage', 'app', 'uploads', 'processed')
