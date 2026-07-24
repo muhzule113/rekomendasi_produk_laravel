@@ -9,12 +9,12 @@ COPY public ./public
 RUN npm run build
 
 # --- app ---
-FROM php:8.2-fpm-bookworm
+FROM php:8.4-fpm-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx supervisor git unzip \
         libzip-dev libpng-dev libonig-dev libicu-dev \
-        python3 python3-venv python3-dev gcc g++ \
+        python3 python3-venv python3-dev python3-pip gcc g++ \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring exif pcntl bcmath gd zip intl opcache \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/sites-enabled/default
