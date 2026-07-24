@@ -55,7 +55,7 @@
 <div id="toast-container"></div>
 
 <script src="{{ asset('assets/js/main.js') }}?v={{ time() }}"></script>
-<script src="{{ asset('admin/js/admin.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/admin.js') }}?v={{ time() }}"></script>
 @stack('scripts')
 </body>
 </html>
