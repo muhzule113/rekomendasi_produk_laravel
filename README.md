@@ -9,14 +9,16 @@ Aplikasi toko online kebutuhan sehari-hari dengan modul **rekomendasi produk ber
 ## Fitur Utama
 
 ### Pelanggan
-- Katalog produk, detail produk, dan keranjang belanja (session)
+- Katalog produk **dengan gambar**, detail produk, dan keranjang belanja (session)
 - Checkout dengan metode **Bayar di Toko** atau **Midtrans Snap** (GoPay, VA, kartu, dll.)
 - Riwayat transaksi + verifikasi status pembayaran Midtrans
 - Halaman rekomendasi personal (`/rekomendasi`)
 - Produk serupa di halaman detail produk
+- Gambar produk tampil di katalog, home, detail, rekomendasi, keranjang, dan riwayat
 
 ### Admin
-- Dashboard, kelola produk, pelanggan, transaksi, ulasan, dan laporan
+- Dashboard, kelola produk (**upload gambar** per produk), pelanggan, transaksi, ulasan, dan laporan
+- Import produk CSV dengan kolom opsional `foto` (path relatif di `storage/app/public`)
 - Analisis CF + tombol **Hitung Ulang** kemiripan produk
 - Upload data transaksi (CSV/Excel) lewat pipeline Python (ETL + CF)
 - Riwayat upload dan log perhitungan CF
@@ -32,6 +34,7 @@ Aplikasi toko online kebutuhan sehari-hari dengan modul **rekomendasi produk ber
 | Database | MySQL (disarankan) / SQLite untuk development Laravel |
 | Frontend | Blade, Vite, Tailwind CSS |
 | Pipeline data | Python 3 (pandas, numpy, scikit-learn, pymysql) |
+| Deploy VPS | Docker Compose (PHP + Nginx + MySQL + Python venv) |
 
 ---
 
@@ -54,29 +57,35 @@ resources/views/customer/    # Tampilan toko
 resources/views/admin/       # Panel admin
 routes/web.php
 routes/api.php
+storage/app/public/products/ # Gambar produk (diakses via /storage/products/...)
 storage/app/uploads/         # File upload (raw / processed / logs)
+public/uploads/templates/    # Template CSV import produk
+docker/                      # Nginx, supervisord, entrypoint (deploy Docker)
 ```
 
 ---
 
-## Instalasi & Setup
+## Setup di Device Baru
 
-### Prasyarat
-- PHP 8.2+, Composer, Node.js
-- MySQL (wajib jika memakai upload/CF Python)
-- Python 3 + pip (opsional, untuk pipeline upload)
+> **Mulai dari sini** jika Anda clone repo ini di laptop/PC/VPS baru. Pilih **satu** jalur di bawah.
 
-### Langkah
+### Jalur A — Development lokal (Laragon / XAMPP / manual)
+
+**Prasyarat:** PHP 8.2+, Composer, Node.js, MySQL (wajib untuk pipeline Python), Python 3 + pip (opsional, untuk upload transaksi)
 
 ```bash
-# 1. Install dependency PHP
+# 1. Clone & masuk folder proyek
+git clone https://github.com/muhzule113/rekomendasi_produk_laravel.git
+cd rekomendasi_produk_laravel
+
+# 2. Dependency PHP
 composer install
 
-# 2. Environment
+# 3. Environment
 cp .env.example .env
 php artisan key:generate
 
-# 3. Konfigurasi database di .env (contoh MySQL)
+# 4. Database — edit .env (contoh MySQL)
 # DB_CONNECTION=mysql
 # DB_HOST=127.0.0.1
 # DB_PORT=3306
@@ -84,33 +93,115 @@ php artisan key:generate
 # DB_USERNAME=root
 # DB_PASSWORD=
 
-# 4. Migrasi
+# 5. Migrasi & symlink gambar produk
 php artisan migrate
+php artisan storage:link
 
-# 5. Asset frontend (opsional untuk development)
-npm install
-npm run build
+# 6. (Opsional) Frontend Vite — UI memakai public/assets/ statis, npm tidak wajib
+# npm install && npm run build
 
-# 6. Jalankan aplikasi
+# 7. Jalankan
 php artisan serve
-# atau (serve + queue + vite sekaligus):
+# atau serve + queue + vite sekaligus:
 composer run dev
 ```
 
+**Checklist device baru (lokal):**
+
+| # | Langkah | Wajib? |
+|---|---------|--------|
+| 1 | `composer install` | Ya |
+| 2 | Copy `.env` + `php artisan key:generate` | Ya |
+| 3 | Set `DB_*` di `.env` | Ya |
+| 4 | `php artisan migrate` | Ya |
+| 5 | `php artisan storage:link` | Ya (gambar produk) |
+| 6 | `npm install && npm run build` | Tidak (UI pakai `public/assets/`; npm hanya jika develop Vite) |
+| 7 | `pip install -r python/requirements.txt` | Hanya jika pakai upload transaksi |
+| 8 | Set `PYTHON_BIN` & `PIPELINE_SCRIPT` di `.env` | Hanya jika pakai upload transaksi |
+
 Jika memakai Laragon / virtual host, arahkan document root ke folder `public/`.
 
-### Dependency Python (pipeline upload)
+---
+
+### Jalur B — Production VPS (Docker)
+
+**Prasyarat:** Git, Docker & Docker Compose di VPS. Python **sudah otomatis** terpasang di image Docker (tidak perlu `pip install` manual).
+
+```bash
+# 1. Clone di VPS
+git clone https://github.com/muhzule113/rekomendasi_produk_laravel.git
+cd rekomendasi_produk_laravel
+
+# 2. Environment Docker
+cp .env.docker.example .env
+
+# 3. Build image dulu
+docker compose build
+
+# 4. Generate APP_KEY ke .env
+docker compose run --rm app php artisan key:generate --show
+# Salin output, tempel sebagai APP_KEY=... di .env
+
+# 5. Edit .env — minimal:
+# APP_KEY=base64:...
+# APP_URL=http://IP_VPS_ANDA
+# DB_PASSWORD=... (ganti password default)
+# DB_ROOT_PASSWORD=...
+
+# 6. Jalankan
+docker compose up -d
+
+# 7. Cek log
+docker compose logs -f app
+```
+
+**Checklist device baru (Docker/VPS):**
+
+| # | Langkah | Wajib? |
+|---|---------|--------|
+| 1 | `cp .env.docker.example .env` + isi `APP_KEY`, `APP_URL` | Ya |
+| 2 | Ganti `DB_PASSWORD` & `DB_ROOT_PASSWORD` | Ya |
+| 3 | `docker compose build && docker compose up -d` | Ya |
+| 4 | Pastikan port `APP_PORT` (default 80) terbuka di firewall | Ya |
+| 5 | `PYTHON_BIN=/opt/venv/bin/python` sudah di `.env.docker.example` | Otomatis |
+| 6 | Pull update: `git pull && docker compose build && docker compose up -d` | Saat deploy ulang |
+
+Container `app` menjalankan migrasi & `storage:link` otomatis lewat `docker/entrypoint.sh`. Service `queue` menjalankan `php artisan queue:work`.
+
+---
+
+## Instalasi & Konfigurasi Lanjutan
+
+### Gambar produk
+
+Gambar disimpan di `storage/app/public/products/` dan diakses via URL `/storage/products/nama-file.webp`.
+
+| Cara | Keterangan |
+|------|------------|
+| Admin → Produk → Tambah/Edit | Upload file gambar langsung |
+| Import CSV produk | Kolom opsional `foto` — path relatif, contoh `products/nama.jpg`. File harus sudah ada di `storage/app/public/` |
+| Tanpa gambar | Tampil emoji kategori sebagai placeholder |
+
+Pastikan symlink sudah dibuat:
+
+```bash
+php artisan storage:link
+```
+
+Template CSV: `public/uploads/templates/template_produk.csv`
+
+### Dependency Python (hanya jalur lokal / non-Docker)
 
 ```bash
 cd python
 pip install -r requirements.txt
 ```
 
-Sesuaikan kredensial database di `python/config.py` agar sama dengan `.env` Laravel.
+`python/config.py` membaca kredensial database dari variabel lingkungan (`DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`) — sama dengan `.env` Laravel. Pastikan variabel tersebut tersedia saat pipeline dijalankan (Docker Compose sudah meneruskannya otomatis).
 
-### Variabel lingkungan tambahan
+### Variabel lingkungan
 
-Tambahkan ke `.env` (belum ada di stub `.env.example` bawaan):
+Contoh tambahan di `.env`:
 
 ```env
 # Midtrans (sandbox)
@@ -118,9 +209,13 @@ MIDTRANS_SERVER_KEY=SB-Mid-server-xxxx
 MIDTRANS_CLIENT_KEY=SB-Mid-client-xxxx
 MIDTRANS_IS_PRODUCTION=false
 
-# Pipeline upload (opsional)
+# Pipeline upload transaksi (lokal)
 PYTHON_BIN=python
 PIPELINE_SCRIPT=python/pipeline/pipeline_runner.py
+
+# Pipeline upload transaksi (Docker — sudah ada di .env.docker.example)
+# PYTHON_BIN=/opt/venv/bin/python
+# PIPELINE_SCRIPT=python/pipeline/pipeline_runner.py
 ```
 
 **Notification URL Midtrans (production/ngrok):**  
