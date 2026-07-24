@@ -509,6 +509,10 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
   width: 3rem; height: 3rem; flex-shrink: 0;
   border-radius: 0.5rem; background: var(--secondary);
   display: grid; place-items: center; font-size: 1.5rem;
+  overflow: hidden;
+}
+.rec-card-icon img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .rec-card-name { font-weight: 600; font-size: 0.9375rem; color: var(--primary); }
 .rec-card-category { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 2px; }
@@ -769,6 +773,13 @@ tbody tr:hover { background: var(--secondary); }
   display: grid;
   place-items: center;
   font-size: 1.75rem;
+  overflow: hidden;
+}
+.cart-item-emoji img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .cart-item-info {
   flex: 1;

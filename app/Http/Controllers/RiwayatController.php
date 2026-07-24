@@ -54,7 +54,7 @@ class RiwayatController extends Controller
                 ->join('products', 'transaction_items.id_product', '=', 'products.id_product')
                 ->join('categories', 'products.id_category', '=', 'categories.id_category')
                 ->where('id_transaction', $trx->id_transaction)
-                ->select('transaction_items.*', 'products.nama_product', 'categories.nama_category')
+                ->select('transaction_items.*', 'products.nama_product', 'products.foto', 'categories.nama_category')
                 ->get();
         }
 

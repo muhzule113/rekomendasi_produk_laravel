@@ -67,8 +67,12 @@ function getEmojiRiwayat(string $cat, array $map): string { return $map[$cat] ??
                 <div class="divide-y">
                     @foreach($t->items as $d)
                     <div style="padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;">
-                        <div style="width:3.5rem;height:3.5rem;flex-shrink:0;background:var(--secondary);border-radius:.5rem;display:grid;place-items:center;font-size:1.75rem;">
-                            {{ getEmojiRiwayat($d->nama_category, $emojiMap) }}
+                        <div class="cart-item-emoji">
+                            @if(!empty($d->foto))
+                                <img src="{{ asset('storage/'.$d->foto) }}" alt="{{ $d->nama_product }}">
+                            @else
+                                {{ getEmojiRiwayat($d->nama_category, $emojiMap) }}
+                            @endif
                         </div>
                         <div style="min-width:0;flex:1;">
                             <div style="font-weight:600;color:var(--primary);">{{ $d->nama_product }}</div>

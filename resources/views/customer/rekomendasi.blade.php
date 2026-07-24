@@ -77,7 +77,13 @@ $isLoggedIn = Auth::check() && Auth::user()->role === 'pelanggan';
                 @foreach($recommendations as $p)
                 <div class="rec-card">
                     <div class="rec-card-top">
-                        <div class="rec-card-icon">{{ getEmojiRec($p['nama_category'], $emojiMap) }}</div>
+                        <div class="rec-card-icon">
+                            @if(!empty($p['foto']))
+                                <img src="{{ asset('storage/'.$p['foto']) }}" alt="{{ $p['nama_product'] }}">
+                            @else
+                                {{ getEmojiRec($p['nama_category'], $emojiMap) }}
+                            @endif
+                        </div>
                         <div>
                             <div class="rec-card-name">{{ $p['nama_product'] }}</div>
                             <div class="rec-card-category">{{ $p['nama_category'] }}</div>
@@ -118,7 +124,13 @@ $isLoggedIn = Auth::check() && Auth::user()->role === 'pelanggan';
                 @foreach($popular as $p)
                 <div class="rec-card">
                     <div class="rec-card-top">
-                        <div class="rec-card-icon">{{ getEmojiRec($p['nama_category'], $emojiMap) }}</div>
+                        <div class="rec-card-icon">
+                            @if(!empty($p['foto']))
+                                <img src="{{ asset('storage/'.$p['foto']) }}" alt="{{ $p['nama_product'] }}">
+                            @else
+                                {{ getEmojiRec($p['nama_category'], $emojiMap) }}
+                            @endif
+                        </div>
                         <div>
                             <div class="rec-card-name">{{ $p['nama_product'] }}</div>
                             <div class="rec-card-category">{{ $p['nama_category'] }}</div>

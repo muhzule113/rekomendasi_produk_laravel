@@ -36,7 +36,11 @@ function getEmojiCart(string $cat, array $map): string { return $map[$cat] ?? $m
                     <div class="cart-item">
                         <div class="cart-item-top">
                             <div class="cart-item-emoji">
-                                {{ getEmojiCart($item['nama_category'], $emojiMap) }}
+                                @if(!empty($item['foto']))
+                                    <img src="{{ asset('storage/'.$item['foto']) }}" alt="{{ $item['nama_product'] }}">
+                                @else
+                                    {{ getEmojiCart($item['nama_category'], $emojiMap) }}
+                                @endif
                             </div>
                             <div class="cart-item-info">
                                 <div class="cart-item-name">{{ $item['nama_product'] }}</div>

@@ -34,6 +34,7 @@ class CartController extends Controller
                 'id_product' => $p->id_product,
                 'nama_product' => $p->nama_product,
                 'nama_category' => $p->nama_category,
+                'foto' => $p->foto,
                 'harga' => $p->harga,
                 'stok' => $p->stok,
                 'qty' => $qty,
