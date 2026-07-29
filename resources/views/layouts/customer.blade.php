@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Toko Sinar Manis — Rekomendasi Cerdas')</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230F2A47'/><text y='.9em' font-size='70' x='12'>🏪</text></svg>">
+    <link rel="icon" href="{{ asset('assets/images/logosinarmanis.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v={{ time() }}">
     @stack('styles')
@@ -14,7 +14,9 @@
 <nav class="navbar">
     <div class="navbar-inner">
         <a href="{{ route('home') }}" class="navbar-logo">
-            <div class="logo-icon"><i class="fa-solid fa-store" style="font-size:0.9rem;"></i></div>
+            <div class="logo-icon">
+                <img src="{{ asset('assets/images/logosinarmanis.png') }}" alt="Toko Sinar Manis">
+            </div>
             <div>
                 <div class="logo-text-main">Toko Sinar Manis</div>
                 <div class="logo-text-sub">Rekomendasi Cerdas</div>
@@ -68,7 +70,9 @@
 <div class="mobile-drawer" id="mobileDrawer">
     <div class="mobile-drawer-header">
         <a href="{{ route('home') }}" class="navbar-logo">
-            <div class="logo-icon"><i class="fa-solid fa-store" style="font-size:0.9rem;"></i></div>
+            <div class="logo-icon">
+                <img src="{{ asset('assets/images/logosinarmanis.png') }}" alt="Toko Sinar Manis">
+            </div>
             <div><div class="logo-text-main">Toko Sinar Manis</div></div>
         </a>
         <button class="mobile-drawer-close" id="mobileDrawerClose" aria-label="Tutup Menu">
@@ -150,8 +154,8 @@
     <div class="footer-inner">
         <div>
             <div class="footer-brand">
-                <div class="logo-icon" style="width:2.25rem;height:2.25rem;font-size:0.9rem;">
-                    <i class="fa-solid fa-store"></i>
+                <div class="logo-icon" style="width:2.25rem;height:2.25rem;">
+                    <img src="{{ asset('assets/images/logosinarmanis.png') }}" alt="Toko Sinar Manis">
                 </div>
                 <span class="footer-brand-name">Toko Sinar Manis</span>
             </div>
