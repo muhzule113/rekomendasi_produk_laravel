@@ -23,3 +23,10 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /graphify-out
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/

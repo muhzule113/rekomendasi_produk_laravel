@@ -2,7 +2,7 @@
     <div class="sidebar-top">
         <a href="{{ route('admin.dashboard') }}" class="sidebar-logo">
             <div class="sidebar-logo-icon-wrap">
-                <i class="fa-solid fa-store"></i>
+                <img src="{{ asset('assets/images/logosinarmanis.png') }}" alt="Toko Sinar Manis">
             </div>
             <span class="sidebar-logo-text">Sinar Manis</span>
         </a>

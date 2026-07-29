@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Admin — Toko Sinar Manis')</title>
+    <link rel="icon" href="{{ asset('assets/images/logosinarmanis.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('assets/css/admin.css') }}?v={{ time() }}">
@@ -55,7 +56,7 @@
 <div id="toast-container"></div>
 
 <script src="{{ asset('assets/js/main.js') }}?v={{ time() }}"></script>
-<script src="{{ asset('admin/js/admin.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/admin.js') }}?v={{ time() }}"></script>
 @stack('scripts')
 </body>
 </html>
