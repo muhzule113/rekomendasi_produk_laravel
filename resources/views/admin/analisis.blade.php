@@ -6,7 +6,7 @@
 <div class="page-title-box mb-6 flex justify-between items-center">
     <div>
         <h1 style="font-size:1.75rem;font-weight:800;color:var(--primary);"><i class="fa-solid fa-diagram-project" style="margin-right: 0.5rem; color: var(--color-gold);"></i> Analisis Rekomendasi</h1>
-        <p class="text-sm text-muted" style="margin-top:.25rem;">Matriks Item-Based Collaborative Filtering &amp; evaluasi performa rekomendasi produk.</p>
+        <p class="text-sm text-muted" style="margin-top:.25rem;">Item-Based CF — Cosine Similarity pada matriks interaksi biner (transaksi Selesai + Dibayar).</p>
     </div>
     <div class="flex items-center gap-3">
         @if ($last_updated)
@@ -17,6 +17,21 @@
         </button>
     </div>
 </div>
+
+@if (!empty($recommendation_dirty))
+<div class="alert-card mb-6" style="background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:1rem 1.25rem;">
+    <div style="display:flex;gap:.75rem;align-items:flex-start;">
+        <i class="fa-solid fa-triangle-exclamation" style="color:#c2410c;margin-top:.15rem;"></i>
+        <div>
+            <div style="font-weight:700;color:#9a3412;">Model rekomendasi perlu dihitung ulang</div>
+            <div class="text-sm" style="color:#9a3412;margin-top:.25rem;">
+                Terdapat transaksi valid baru sejak kalkulasi terakhir. Klik <strong>Hitung Ulang</strong> agar skor cosine diperbarui.
+                Ambang minimum co-occurrence saat ini: <strong>{{ $min_co_occurrence ?? 2 }}</strong>.
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- ====== Stat Cards ====== -->
 <div class="mt-6 grid-4 gap-6 mb-8">
@@ -61,8 +76,9 @@
                     <div style="font-size:1.4rem; font-weight:800; color:var(--primary);">{{ $matrix_products }}</div>
                 </div>
                 <div style="text-align:center; padding:.75rem; background:#f0fdf4; border-radius:10px;">
-                    <div style="font-size:.72rem; color: var(--color-muted); margin-bottom:.25rem;">Coverage</div>
-                    <div style="font-size:1.4rem; font-weight:800; color:#059669;">{{ $coverage }}%</div>
+                    <div style="font-size:.72rem; color: var(--color-muted); margin-bottom:.25rem;">Pair Coverage</div>
+                    <div style="font-size:1.4rem; font-weight:800; color:#059669;">{{ $pair_coverage ?? $coverage }}%</div>
+                    <div style="font-size:.65rem;color:var(--color-muted);margin-top:.15rem;">% pasangan produk berkemiripan</div>
                 </div>
                 <div style="text-align:center; padding:.75rem; background:#fffbeb; border-radius:10px;">
                     <div style="font-size:.72rem; color: var(--color-muted); margin-bottom:.25rem;">Avg Skor</div>
@@ -105,6 +121,54 @@
             <div style="position:relative;height:260px;">
                 <canvas id="scoreDistChart"></canvas>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== Evaluasi Akademik ====== -->
+<div class="card mb-8 mt-6">
+    <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 style="margin:0;">Evaluasi Akademik (Time-based Holdout)</h3>
+                <p class="text-xs text-muted" style="margin:.35rem 0 0;">Similarity dibangun ulang hanya dari data latih. Catalog Coverage@K ≠ Pair Coverage.</p>
+            </div>
+        </div>
+        <div class="table-overflow">
+            <table style="font-size:.85rem;">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Metode</th>
+                        <th class="text-center">K</th>
+                        <th class="text-center">Users</th>
+                        <th class="text-center">Precision</th>
+                        <th class="text-center">Recall</th>
+                        <th class="text-center">F1</th>
+                        <th class="text-center">Hit Rate</th>
+                        <th class="text-center">Catalog Cov@K</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (empty($evaluation_logs) || count($evaluation_logs) === 0)
+                        <tr><td colspan="9" class="text-center py-4 text-muted">Belum ada hasil evaluasi. Jalankan pipeline/batch CF atau evaluator Python.</td></tr>
+                    @else
+                        @foreach ($evaluation_logs as $ev)
+                        <tr>
+                            <td>{{ date('d M Y H:i', strtotime($ev->evaluated_at)) }}</td>
+                            <td><span style="font-size:.72rem;">{{ $ev->method }}</span></td>
+                            <td class="text-center font-bold">{{ $ev->k_value }}</td>
+                            <td class="text-center">{{ $ev->users_evaluated }}</td>
+                            <td class="text-center">{{ number_format($ev->precision_at_k, 4) }}</td>
+                            <td class="text-center">{{ number_format($ev->recall_at_k, 4) }}</td>
+                            <td class="text-center">{{ number_format($ev->f1_at_k, 4) }}</td>
+                            <td class="text-center">{{ number_format($ev->hit_rate_at_k, 4) }}</td>
+                            <td class="text-center">{{ number_format($ev->catalog_coverage_at_k, 2) }}%</td>
+                        </tr>
+                        @endforeach
+                    @endif
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

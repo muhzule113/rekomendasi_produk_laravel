@@ -7,18 +7,42 @@ use Illuminate\Support\Facades\Log;
 
 class RecommenderService
 {
+    public const METHOD_IBCF = 'Item-Based CF - Cosine Similarity';
+    public const METHOD_COLD_START = 'Cold Start - Popularitas/Rating (bukan CF)';
+    public const METHOD_BUY_AGAIN = 'Beli Lagi (Fallback, bukan CF)';
+    public const METHOD_AVAILABLE = 'Produk Tersedia (Fallback, bukan CF)';
+
+    public const LOG_IBCF = 'ibcf_cosine';
+    public const LOG_COLD_START = 'cold_start_popular';
+    public const LOG_BUY_AGAIN = 'buy_again';
+    public const LOG_AVAILABLE = 'available_fallback';
+
     /**
-     * Build User-Item binary matrix from completed transactions
+     * Scope transaksi valid untuk CF: Selesai + Dibayar.
+     */
+    public static function applyValidTransactionFilter($query)
+    {
+        return $query
+            ->where('transactions.status_pesanan', 'Selesai')
+            ->where('transactions.status_pembayaran', 'Dibayar');
+    }
+
+    public function minCoOccurrence(): int
+    {
+        return max(1, (int) config('recommendation.min_co_occurrence', 2));
+    }
+
+    /**
+     * Build User-Item binary matrix from completed paid transactions.
      */
     public function buildUserItemMatrix(): array
     {
-        $results = DB::table('transactions')
+        $query = DB::table('transactions')
             ->join('transaction_items', 'transactions.id_transaction', '=', 'transaction_items.id_transaction')
-            ->where('transactions.status_pesanan', 'Selesai')
-            ->where('transactions.status_pembayaran', 'Dibayar')
             ->select('transactions.id_user', 'transaction_items.id_product')
-            ->groupBy('transactions.id_user', 'transaction_items.id_product')
-            ->get();
+            ->groupBy('transactions.id_user', 'transaction_items.id_product');
+
+        $results = self::applyValidTransactionFilter($query)->get();
 
         $products = DB::table('products')->where('status', 'aktif')->pluck('id_product')->toArray();
 
@@ -36,7 +60,7 @@ class RecommenderService
         }
 
         foreach ($results as $row) {
-            if (in_array($row->id_product, $products)) {
+            if (in_array($row->id_product, $products, true)) {
                 $matrix[$row->id_user][$row->id_product] = 1;
             }
         }
@@ -45,8 +69,8 @@ class RecommenderService
     }
 
     /**
-     * Dice similarity + normalisasi ke [0,1] relatif terhadap pasangan terkuat.
-     * # ponytail: skor relatif ke max katalog; absolute Dice jika banding lintas dataset
+     * Binary cosine similarity tanpa normalisasi terhadap skor maksimum.
+     * cosine(A,B) = |A∩B| / sqrt(|A| * |B|)
      */
     public function calculateCosineSimilarity(array $matrix): array
     {
@@ -64,6 +88,7 @@ class RecommenderService
         }
 
         $productIds = array_keys($buyers);
+        sort($productIds, SORT_NUMERIC);
         $numProducts = count($productIds);
 
         if ($numProducts < 2) {
@@ -75,8 +100,8 @@ class RecommenderService
             $sizes[$pid] = count($buyers[$pid]);
         }
 
+        $minCo = $this->minCoOccurrence();
         $similarities = [];
-        $maxRaw = 0;
 
         for ($i = 0; $i < $numProducts; $i++) {
             for ($j = $i + 1; $j < $numProducts; $j++) {
@@ -84,32 +109,33 @@ class RecommenderService
                 $prodB = $productIds[$j];
 
                 $intersection = count(array_intersect_key($buyers[$prodA], $buyers[$prodB]));
-                if ($intersection === 0) {
+                if ($intersection < $minCo) {
                     continue;
                 }
 
-                $dice = (2 * $intersection) / ($sizes[$prodA] + $sizes[$prodB]);
-                $maxRaw = max($maxRaw, $dice);
+                $denom = sqrt($sizes[$prodA] * $sizes[$prodB]);
+                if ($denom <= 0) {
+                    continue;
+                }
+
+                $cosine = $intersection / $denom;
+                if ($cosine <= 0) {
+                    continue;
+                }
+
                 $similarities[] = [
                     'product_a' => $prodA,
                     'product_b' => $prodB,
-                    'score' => $dice,
+                    'score' => $cosine,
                     'co_occurrence' => $intersection,
                 ];
             }
         }
 
-        if ($maxRaw > 0) {
-            foreach ($similarities as &$sim) {
-                $sim['score'] = $sim['score'] / $maxRaw;
-            }
-            unset($sim);
-        }
-
         $savedPairsCount = count($similarities);
-        $totalScore = 0;
-        $maxScore = 0;
-        $minScore = 1;
+        $totalScore = 0.0;
+        $maxScore = 0.0;
+        $minScore = 1.0;
         foreach ($similarities as $sim) {
             $totalScore += $sim['score'];
             $maxScore = max($maxScore, $sim['score']);
@@ -127,19 +153,51 @@ class RecommenderService
                 'expected_pairs' => $expectedPairs,
                 'saved_pairs' => $savedPairsCount,
                 'coverage_percentage' => round($coverage, 2),
-                'max_score' => round($maxScore, 4),
-                'min_score' => $savedPairsCount > 0 ? round($minScore, 4) : 0,
-                'avg_score' => $savedPairsCount > 0 ? round($totalScore / $savedPairsCount, 4) : 0,
+                'max_score' => $savedPairsCount > 0 ? round($maxScore, 6) : 0,
+                'min_score' => $savedPairsCount > 0 ? round($minScore, 6) : 0,
+                'avg_score' => $savedPairsCount > 0 ? round($totalScore / $savedPairsCount, 6) : 0,
+                'min_co_occurrence' => $minCo,
             ],
         ];
     }
 
     /**
-     * Save bidirectional similarity pairs to DB
+     * Hitung cosine dari dua vektor biner (untuk unit test / parity).
+     *
+     * @param  array<int, int|bool>  $vectorA
+     * @param  array<int, int|bool>  $vectorB
+     */
+    public function cosineFromBinaryVectors(array $vectorA, array $vectorB): float
+    {
+        $len = max(count($vectorA), count($vectorB));
+        $dot = 0;
+        $normA = 0;
+        $normB = 0;
+
+        for ($i = 0; $i < $len; $i++) {
+            $a = (int) ($vectorA[$i] ?? 0);
+            $b = (int) ($vectorB[$i] ?? 0);
+            $dot += $a * $b;
+            $normA += $a * $a;
+            $normB += $b * $b;
+        }
+
+        if ($normA === 0 || $normB === 0) {
+            return 0.0;
+        }
+
+        return $dot / sqrt($normA * $normB);
+    }
+
+    /**
+     * Save bidirectional similarity pairs atomically.
+     * Empty input does not wipe existing data (caller must treat as failed calc).
      */
     public function saveSimilarity(array $similarities): bool
     {
-        if (empty($similarities)) return true;
+        if (empty($similarities)) {
+            return false;
+        }
 
         try {
             DB::beginTransaction();
@@ -147,14 +205,21 @@ class RecommenderService
 
             $inserts = [];
             foreach ($similarities as $sim) {
-                $inserts[] = [
-                    'product_a' => $sim['product_a'], 'product_b' => $sim['product_b'],
-                    'score' => $sim['score'], 'co_occurrence' => $sim['co_occurrence'],
+                $row = [
+                    'product_a' => $sim['product_a'],
+                    'product_b' => $sim['product_b'],
+                    'score' => $sim['score'],
+                    'co_occurrence' => $sim['co_occurrence'],
+                    'source' => 'cf_purchase',
                     'updated_at' => now(),
                 ];
+                $inserts[] = $row;
                 $inserts[] = [
-                    'product_a' => $sim['product_b'], 'product_b' => $sim['product_a'],
-                    'score' => $sim['score'], 'co_occurrence' => $sim['co_occurrence'],
+                    'product_a' => $sim['product_b'],
+                    'product_b' => $sim['product_a'],
+                    'score' => $sim['score'],
+                    'co_occurrence' => $sim['co_occurrence'],
+                    'source' => 'cf_purchase',
                     'updated_at' => now(),
                 ];
             }
@@ -163,196 +228,256 @@ class RecommenderService
                 DB::table('product_similarity')->insert($chunk);
             }
 
+            $this->clearRecommendationDirty();
             DB::commit();
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Similarity Save Error: " . $e->getMessage());
+            Log::error('Similarity Save Error: ' . $e->getMessage());
             return false;
         }
     }
 
+    public function isRecommendationDirty(): bool
+    {
+        $value = DB::table('system_settings')
+            ->where('setting_key', 'recommendation_dirty')
+            ->value('setting_value');
+
+        return (string) $value === '1';
+    }
+
+    public function setRecommendationDirty(): void
+    {
+        DB::table('system_settings')->updateOrInsert(
+            ['setting_key' => 'recommendation_dirty'],
+            ['setting_value' => '1', 'updated_at' => now()]
+        );
+    }
+
+    public function clearRecommendationDirty(): void
+    {
+        DB::table('system_settings')->updateOrInsert(
+            ['setting_key' => 'recommendation_dirty'],
+            ['setting_value' => '0', 'updated_at' => now()]
+        );
+    }
+
     /**
-     * Get rating map for product IDs
+     * Rating map for display only (not used in IBCF scoring).
      */
     private function getRatingMap(array $productIds): array
     {
-        if (empty($productIds)) return [];
+        if (empty($productIds)) {
+            return [];
+        }
 
         return DB::table('product_reviews')
             ->whereIn('id_product', $productIds)
             ->selectRaw('id_product, COALESCE(ROUND(AVG(rating),1),0) as avg_rating, COUNT(*) as review_count')
             ->groupBy('id_product')
             ->get()
-            ->mapWithKeys(fn($r) => [
-                $r->id_product => ['avg' => (float)$r->avg_rating, 'count' => (int)$r->review_count]
+            ->mapWithKeys(fn ($r) => [
+                $r->id_product => ['avg' => (float) $r->avg_rating, 'count' => (int) $r->review_count],
             ])->toArray();
     }
 
     /**
-     * Get low-rated product IDs (≤2.0 with ≥2 reviews)
-     */
-    private function getLowRatedProductIds(): array
-    {
-        return DB::table('product_reviews')
-            ->select('id_product')
-            ->selectRaw('COALESCE(ROUND(AVG(rating),1),0) as avg_rating, COUNT(*) as cnt')
-            ->groupBy('id_product')
-            ->havingRaw('avg_rating <= 2.0 AND cnt >= 2')
-            ->pluck('id_product')->toArray();
-    }
-
-    /**
-     * Apply hybrid scoring: 70% similarity + 30% rating + boost
-     */
-    private function applyHybridScoring(array &$results, array $ratingMap): void
-    {
-        foreach ($results as &$row) {
-            $pid = $row['id_product'];
-            $sim = $row['score'] ?? 0;
-            $r = $ratingMap[$pid] ?? null;
-            $avg = $r ? $r['avg'] : 0;
-            $count = $r ? $r['count'] : 0;
-            $normRating = $avg / 5.0;
-            $hybrid = ($sim * 0.7) + ($normRating * 0.3);
-            if ($avg >= 4.0 && $count >= 2) $hybrid += 0.1;
-
-            $row['hybrid_score'] = round($hybrid, 4);
-            $row['rating_avg'] = $avg;
-            $row['rating_count'] = $count;
-        }
-
-        usort($results, fn($a, $b) => $b['hybrid_score'] <=> $a['hybrid_score']);
-    }
-
-    /**
-     * Core Item-Based CF recommendation for a customer
+     * Pure Item-Based CF recommendation with candidate aggregation.
+     *
+     * prediction_score(user, candidate)
+     *   = sum(similarity(purchased_item, candidate)) / |purchased_items|
      */
     public function recommendForCustomer(int $customerId, int $limit = 8): array
     {
         $boughtProducts = $this->getBoughtProducts($customerId);
-        if (empty($boughtProducts)) return [];
+        if (empty($boughtProducts)) {
+            return [];
+        }
 
-        $lowRatedIds = $this->getLowRatedProductIds();
-        $excludeIds = array_merge($boughtProducts, $lowRatedIds);
+        $purchasedCount = count($boughtProducts);
 
-        $results = DB::table('product_similarity')
+        $rows = DB::table('product_similarity')
             ->join('products', 'product_similarity.product_b', '=', 'products.id_product')
             ->join('categories', 'products.id_category', '=', 'categories.id_category')
             ->whereIn('product_similarity.product_a', $boughtProducts)
-            ->whereNotIn('product_similarity.product_b', $excludeIds)
+            ->whereNotIn('product_similarity.product_b', $boughtProducts)
             ->where('products.status', 'aktif')
             ->where('products.stok', '>', 0)
-            ->select('products.*', 'categories.nama_category', 'product_similarity.score', 'product_similarity.product_a as bought_id')
-            ->orderByDesc('product_similarity.score')
-            ->limit($limit)
-            ->get()
-            ->map(fn($r) => (array)$r)
+            ->select(
+                'products.*',
+                'categories.nama_category',
+                'product_similarity.score',
+                'product_similarity.co_occurrence',
+                'product_similarity.product_a as bought_id'
+            )
+            ->get();
+
+        $aggregated = [];
+        foreach ($rows as $row) {
+            $candidateId = (int) $row->id_product;
+            $sim = (float) $row->score;
+            $co = (int) $row->co_occurrence;
+            $boughtId = (int) $row->bought_id;
+
+            if (!isset($aggregated[$candidateId])) {
+                $aggregated[$candidateId] = [
+                    'product' => (array) $row,
+                    'sim_sum' => 0.0,
+                    'max_sim' => -1.0,
+                    'best_bought_id' => $boughtId,
+                    'max_co' => $co,
+                ];
+            }
+
+            $aggregated[$candidateId]['sim_sum'] += $sim;
+            $aggregated[$candidateId]['max_co'] = max($aggregated[$candidateId]['max_co'], $co);
+
+            if ($sim > $aggregated[$candidateId]['max_sim']) {
+                $aggregated[$candidateId]['max_sim'] = $sim;
+                $aggregated[$candidateId]['best_bought_id'] = $boughtId;
+            }
+        }
+
+        if (empty($aggregated)) {
+            return [];
+        }
+
+        $allBoughtIds = array_unique(array_map(fn ($a) => $a['best_bought_id'], $aggregated));
+        $boughtNames = DB::table('products')
+            ->whereIn('id_product', $allBoughtIds)
+            ->pluck('nama_product', 'id_product')
             ->toArray();
 
-        // Deduplicate
-        $uniqueRecs = [];
-        $prodIds = [];
-        foreach ($results as $row) {
-            $id = $row['id_product'];
-            if (!isset($uniqueRecs[$id])) {
-                $boughtName = DB::table('products')->where('id_product', $row['bought_id'])->value('nama_product');
-                $row['alasan'] = "Sering dibeli bersama " . ($boughtName ?? 'produk lain');
-                $uniqueRecs[$id] = $row;
-                $prodIds[] = $id;
-            }
-        }
-        $uniqueRecs = array_values($uniqueRecs);
+        $results = [];
+        foreach ($aggregated as $candidateId => $agg) {
+            $row = $agg['product'];
+            $prediction = $agg['sim_sum'] / $purchasedCount;
+            $boughtName = $boughtNames[$agg['best_bought_id']] ?? 'produk lain';
 
-        if (!empty($uniqueRecs)) {
-            $ratingMap = $this->getRatingMap($prodIds);
-            $this->applyHybridScoring($uniqueRecs, $ratingMap);
-            foreach ($uniqueRecs as &$r) {
-                if (!empty($r['rating_avg']) && $r['rating_count'] >= 2) {
-                    $r['alasan'] = ($r['alasan'] ?? '') . " (rating " . $r['rating_avg'] . ")";
-                }
-            }
+            $row['score'] = round($prediction, 6);
+            $row['prediction_score'] = round($prediction, 6);
+            $row['co_occurrence'] = $agg['max_co'];
+            $row['bought_id'] = $agg['best_bought_id'];
+            $row['alasan'] = 'Direkomendasikan berdasarkan kemiripan pola pembelian dengan ' . $boughtName;
+            $results[] = $row;
         }
 
-        return array_slice($uniqueRecs, 0, $limit);
+        usort($results, function ($a, $b) {
+            $cmp = $b['prediction_score'] <=> $a['prediction_score'];
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmp = ($b['co_occurrence'] ?? 0) <=> ($a['co_occurrence'] ?? 0);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            return ($a['id_product'] <=> $b['id_product']);
+        });
+
+        $results = array_slice($results, 0, $limit);
+
+        $prodIds = array_column($results, 'id_product');
+        $ratingMap = $this->getRatingMap($prodIds);
+        foreach ($results as &$r) {
+            $pid = $r['id_product'];
+            $r['rating_avg'] = $ratingMap[$pid]['avg'] ?? 0;
+            $r['rating_count'] = $ratingMap[$pid]['count'] ?? 0;
+        }
+        unset($r);
+
+        return $results;
     }
 
     /**
-     * Similar products for detail page
+     * Similar products for detail page (pure IBCF similarity, no rating in score).
      */
     public function recommendSimilarProduct(int $productId, int $limit = 4): array
     {
-        $lowRatedIds = $this->getLowRatedProductIds();
-        $excludeIds = array_merge([$productId], $lowRatedIds);
-
         $results = DB::table('product_similarity')
             ->join('products', 'product_similarity.product_b', '=', 'products.id_product')
             ->join('categories', 'products.id_category', '=', 'categories.id_category')
             ->where('product_similarity.product_a', $productId)
-            ->whereNotIn('product_similarity.product_b', $excludeIds)
+            ->where('product_similarity.product_b', '!=', $productId)
             ->where('products.status', 'aktif')
             ->where('products.stok', '>', 0)
             ->select('products.*', 'categories.nama_category', 'product_similarity.score', 'product_similarity.co_occurrence')
             ->orderByDesc('product_similarity.score')
             ->orderByDesc('product_similarity.co_occurrence')
+            ->orderBy('products.id_product')
             ->limit($limit)
             ->get()
-            ->map(fn($r) => (array)$r)
+            ->map(fn ($r) => (array) $r)
             ->toArray();
 
         if (!empty($results)) {
             $prodIds = array_column($results, 'id_product');
             $ratingMap = $this->getRatingMap($prodIds);
-            $this->applyHybridScoring($results, $ratingMap);
+            foreach ($results as &$row) {
+                $pid = $row['id_product'];
+                $row['rating_avg'] = $ratingMap[$pid]['avg'] ?? 0;
+                $row['rating_count'] = $ratingMap[$pid]['count'] ?? 0;
+                $row['alasan'] = 'Mirip berdasarkan pola pembelian pelanggan';
+            }
+            unset($row);
         }
 
         return $results;
     }
 
     /**
-     * Get product IDs bought by a customer
+     * Product IDs bought by customer from valid CF transactions only.
      */
     public function getBoughtProducts(int $customerId): array
     {
-        return DB::table('transactions')
+        $query = DB::table('transactions')
             ->join('transaction_items', 'transactions.id_transaction', '=', 'transaction_items.id_transaction')
-            ->where('transactions.id_user', $customerId)
+            ->where('transactions.id_user', $customerId);
+
+        return self::applyValidTransactionFilter($query)
             ->distinct()
+            ->orderBy('transaction_items.id_product')
             ->pluck('transaction_items.id_product')
             ->toArray();
     }
 
     /**
-     * Fallback: Buy Again products
+     * Fallback: Buy Again products (valid transactions only).
      */
     public function getBuyAgainProducts(int $customerId, int $limit = 8): array
     {
-        $results = DB::table('transaction_items')
+        $query = DB::table('transaction_items')
             ->join('transactions', 'transaction_items.id_transaction', '=', 'transactions.id_transaction')
             ->join('products', 'transaction_items.id_product', '=', 'products.id_product')
             ->join('categories', 'products.id_category', '=', 'categories.id_category')
             ->where('transactions.id_user', $customerId)
             ->where('products.status', 'aktif')
-            ->where('products.stok', '>', 0)
-            ->select('products.*', 'categories.nama_category',
+            ->where('products.stok', '>', 0);
+
+        $results = self::applyValidTransactionFilter($query)
+            ->select(
+                'products.*',
+                'categories.nama_category',
                 DB::raw('COUNT(transaction_items.id_product) as frekuensi_beli'),
-                DB::raw('MAX(transactions.tanggal) as terakhir_dibeli'))
+                DB::raw('MAX(transactions.tanggal) as terakhir_dibeli')
+            )
             ->groupBy('transaction_items.id_product')
             ->orderByDesc('frekuensi_beli')
             ->orderByDesc('terakhir_dibeli')
             ->limit($limit)
             ->get()
-            ->map(fn($r) => (array)$r)
+            ->map(fn ($r) => (array) $r)
             ->toArray();
 
         foreach ($results as &$row) {
-            $row['alasan'] = "Anda pernah membeli produk ini " . $row['frekuensi_beli'] . "x";
+            $row['alasan'] = 'Anda pernah membeli produk ini ' . $row['frekuensi_beli'] . 'x';
         }
+
         return $results;
     }
 
     /**
-     * Fallback: Best Seller + Rating products
+     * Fallback cold start: popularity + rating (explicitly not CF).
      */
     public function getBestSellerProducts(int $limit = 8): array
     {
@@ -360,35 +485,36 @@ class RecommenderService
 
         $results = DB::table('products')
             ->join('categories', 'products.id_category', '=', 'categories.id_category')
-            ->leftJoin(DB::raw("(SELECT id_product, ROUND(AVG(rating),1) as avg_rating, COUNT(*) as review_count FROM product_reviews GROUP BY id_product) r"),
+            ->leftJoin(DB::raw('(SELECT id_product, ROUND(AVG(rating),1) as avg_rating, COUNT(*) as review_count FROM product_reviews GROUP BY id_product) r'),
                 'products.id_product', '=', 'r.id_product')
             ->where('products.status', 'aktif')
             ->where('products.stok', '>', 0)
-            ->select('products.*', 'categories.nama_category',
+            ->select(
+                'products.*',
+                'categories.nama_category',
                 DB::raw('COALESCE(r.avg_rating, 0) as avg_rating'),
-                DB::raw('COALESCE(r.review_count, 0) as review_count'))
-            ->orderByRaw("(COALESCE(r.avg_rating,0)/5 * 0.6 + (products.terjual / {$maxTerjual}) * 0.4) DESC")
+                DB::raw('COALESCE(r.review_count, 0) as review_count')
+            )
+            ->orderByRaw('(COALESCE(r.avg_rating,0)/5 * 0.6 + (products.terjual / ' . (float) $maxTerjual . ') * 0.4) DESC')
             ->limit($limit)
             ->get()
-            ->map(fn($r) => (array)$r)
+            ->map(fn ($r) => (array) $r)
             ->toArray();
 
         foreach ($results as &$row) {
             $alasan = [];
             if ($row['review_count'] >= 2 && $row['avg_rating'] >= 4.0) {
-                $alasan[] = "Rating " . $row['avg_rating'] . " (" . $row['review_count'] . " ulasan)";
+                $alasan[] = 'Rating ' . $row['avg_rating'] . ' (' . $row['review_count'] . ' ulasan)';
             }
             if ($row['terjual'] > 0) {
-                $alasan[] = "Terjual " . $row['terjual'] . "x";
+                $alasan[] = 'Terjual ' . $row['terjual'] . 'x';
             }
-            $row['alasan'] = !empty($alasan) ? implode(' — ', $alasan) : "Produk tersedia";
+            $row['alasan'] = !empty($alasan) ? implode(' — ', $alasan) : 'Produk populer (fallback, bukan CF)';
         }
+
         return $results;
     }
 
-    /**
-     * Fallback: Available products
-     */
     public function getAvailableProducts(int $limit = 8): array
     {
         $results = DB::table('products')
@@ -399,17 +525,20 @@ class RecommenderService
             ->orderByDesc('products.id_product')
             ->limit($limit)
             ->get()
-            ->map(fn($r) => (array)$r)
+            ->map(fn ($r) => (array) $r)
             ->toArray();
 
         foreach ($results as &$row) {
-            $row['alasan'] = "Produk tersedia untuk Anda";
+            $row['alasan'] = 'Produk tersedia untuk Anda (fallback, bukan CF)';
         }
+
         return $results;
     }
 
     /**
-     * Master orchestrator with cascading fallbacks
+     * Master orchestrator with cascading fallbacks.
+     *
+     * @return array{method: string, message: ?string, data: array, log_source: string}
      */
     public function getFullRecommendation(?int $customerId, int $limit = 8): array
     {
@@ -419,35 +548,57 @@ class RecommenderService
             $rated = $this->getBestSellerProducts($limit);
             if (!empty($rated)) {
                 return [
-                    'method' => 'Rating Tertinggi (Cold Start)',
-                    'message' => 'Anda belum memiliki riwayat transaksi. Berikut produk dengan rating tertinggi dari pelanggan lain.',
+                    'method' => self::METHOD_COLD_START,
+                    'message' => 'Anda belum memiliki riwayat transaksi valid. Berikut produk populer berdasarkan rating/penjualan (bukan hasil Item-Based CF).',
                     'data' => $rated,
+                    'log_source' => self::LOG_COLD_START,
                 ];
             }
+
             return [
-                'method' => 'Produk Tersedia (Fallback)',
-                'message' => 'Anda belum memiliki riwayat transaksi. Berikut produk yang tersedia saat ini.',
+                'method' => self::METHOD_AVAILABLE,
+                'message' => 'Anda belum memiliki riwayat transaksi. Berikut produk yang tersedia saat ini (fallback, bukan CF).',
                 'data' => $this->getAvailableProducts($limit),
+                'log_source' => self::LOG_AVAILABLE,
             ];
         }
 
         $cfResults = $this->recommendForCustomer($customerId, $limit);
-
         if (!empty($cfResults)) {
-            return ['method' => 'Item-Based CF + Hybrid Rating', 'message' => null, 'data' => $cfResults];
+            return [
+                'method' => self::METHOD_IBCF,
+                'message' => null,
+                'data' => $cfResults,
+                'log_source' => self::LOG_IBCF,
+            ];
         }
 
         $buyAgain = $this->getBuyAgainProducts($customerId, $limit);
         if (!empty($buyAgain)) {
-            return ['method' => 'Beli Lagi (Fallback)', 'message' => 'Belum ada rekomendasi produk baru. Berikut produk yang dapat Anda beli kembali.', 'data' => $buyAgain];
+            return [
+                'method' => self::METHOD_BUY_AGAIN,
+                'message' => 'Belum ada rekomendasi produk baru dari Item-Based CF. Berikut produk yang dapat Anda beli kembali (fallback).',
+                'data' => $buyAgain,
+                'log_source' => self::LOG_BUY_AGAIN,
+            ];
         }
 
         $bestSeller = $this->getBestSellerProducts($limit);
         if (!empty($bestSeller)) {
-            return ['method' => 'Best Seller + Rating (Fallback)', 'message' => 'Belum ada rekomendasi produk baru. Berikut produk terlaris dengan rating tertinggi.', 'data' => $bestSeller];
+            return [
+                'method' => self::METHOD_COLD_START,
+                'message' => 'Belum ada rekomendasi CF. Berikut produk terlaris dengan rating (fallback, bukan CF).',
+                'data' => $bestSeller,
+                'log_source' => self::LOG_COLD_START,
+            ];
         }
 
-        return ['method' => 'Produk Tersedia (Fallback)', 'message' => 'Saat ini tidak ada rekomendasi khusus. Berikut produk yang tersedia.', 'data' => $this->getAvailableProducts($limit)];
+        return [
+            'method' => self::METHOD_AVAILABLE,
+            'message' => 'Saat ini tidak ada rekomendasi khusus. Berikut produk yang tersedia (fallback, bukan CF).',
+            'data' => $this->getAvailableProducts($limit),
+            'log_source' => self::LOG_AVAILABLE,
+        ];
     }
 
     public function getPersonalRecommendations(?int $id_user, int $limit = 6): array
@@ -533,9 +684,6 @@ class RecommenderService
         return $guestId;
     }
 
-    /**
-     * Top product pairs for admin
-     */
     public function getTopRecommendedProducts(): array
     {
         return DB::table('product_similarity')
@@ -547,7 +695,7 @@ class RecommenderService
             ->orderByDesc('product_similarity.co_occurrence')
             ->limit(10)
             ->get()
-            ->map(fn($r) => (array)$r)
+            ->map(fn ($r) => (array) $r)
             ->toArray();
     }
 }

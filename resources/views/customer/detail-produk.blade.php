@@ -438,9 +438,15 @@ async function submitReview() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...';
 
     try {
-        const res = await fetch('/api/review', {
+        const res = await fetch('{{ route('api.review.store') }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: JSON.stringify({
                 id_product: {{ $product->id_product }},
                 rating: selectedRating,

@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Laporan Pengujian Sistem Rekomendasi — Toko Sinar Manis</title>
+<style>
+@page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+* { box-sizing: border-box; }
+body {
+  font-family: "Times New Roman", Times, Georgia, serif;
+  font-size: 11.5pt;
+  line-height: 1.55;
+  color: #111;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 12mm 10mm;
+  background: #fff;
+}
+h1 {
+  font-size: 16pt;
+  text-align: center;
+  margin: 0 0 0.4em;
+  line-height: 1.35;
+  page-break-after: avoid;
+}
+h2 {
+  font-size: 13.5pt;
+  margin-top: 1.6em;
+  border-bottom: 1.5px solid #222;
+  padding-bottom: 0.25em;
+  page-break-after: avoid;
+}
+h3 {
+  font-size: 12pt;
+  margin-top: 1.2em;
+  page-break-after: avoid;
+}
+h4 { font-size: 11.5pt; margin-top: 1em; page-break-after: avoid; }
+p { text-align: justify; margin: 0.55em 0; }
+ul, ol { margin: 0.4em 0 0.4em 1.3em; }
+li { margin: 0.2em 0; }
+blockquote {
+  margin: 0.8em 0;
+  padding: 0.5em 0.9em;
+  border-left: 3px solid #555;
+  background: #f6f6f6;
+  font-size: 10.5pt;
+}
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 9.5pt;
+  background: #f2f2f2;
+  padding: 0.05em 0.3em;
+  border-radius: 3px;
+}
+pre {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 9pt;
+  background: #f4f4f4;
+  border: 1px solid #ddd;
+  padding: 0.75em 0.9em;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  page-break-inside: avoid;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0 1em;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+th, td {
+  border: 1px solid #333;
+  padding: 0.35em 0.5em;
+  vertical-align: top;
+}
+th { background: #efefef; text-align: left; }
+hr { border: none; border-top: 1px solid #999; margin: 1.4em 0; }
+a { color: #111; text-decoration: none; }
+.cover {
+  text-align: center;
+  margin: 2em 0 2.5em;
+  page-break-after: always;
+}
+.cover .meta {
+  margin-top: 2em;
+  font-size: 11pt;
+  line-height: 1.8;
+}
+.toc ul { list-style: none; margin-left: 0; padding-left: 0; }
+.toc li { margin: 0.35em 0; }
+.footer-note {
+  margin-top: 2em;
+  font-size: 9.5pt;
+  color: #444;
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+<h1 id="laporan-pengujian-dan-analisis-data">LAPORAN PENGUJIAN DAN ANALISIS DATA</h1>
+<h2 id="sistem-rekomendasi-produk-berbasis-item-based-collaborative-filtering">Sistem Rekomendasi Produk Berbasis Item-Based Collaborative Filtering</h2>
+<h3 id="studi-kasus-toko-sinar-manis">Studi Kasus: Toko Sinar Manis</h3>
+<hr>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Judul Studi</strong></td>
+<td>Pengembangan Sistem Rekomendasi Produk Berbasis Analisis Data terhadap Transaksi Pelanggan — Toko Sinar Manis</td>
+</tr>
+<tr>
+<td><strong>Platform</strong></td>
+<td>Laravel 12 (PHP) + Pipeline Python (pandas/numpy) + MySQL</td>
+</tr>
+<tr>
+<td><strong>Metode Inti</strong></td>
+<td>Item-Based Collaborative Filtering (IBCF) dengan metrik Dice Coefficient + Hybrid Scoring</td>
+</tr>
+<tr>
+<td><strong>Dokumen</strong></td>
+<td>Laporan Pengujian &amp; Analisis Data</td>
+</tr>
+<tr>
+<td><strong>Versi</strong></td>
+<td>1.0</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="daftar-isi">Daftar Isi</h2>
+<ol>
+<li><a href="#1-pendahuluan">Pendahuluan</a></li>
+<li><a href="#2-teknik-analisis-data">Teknik Analisis Data</a></li>
+<li><a href="#3-teknik-pengumpulan-data">Teknik Pengumpulan Data</a></li>
+<li><a href="#4-preprocessing-data">Preprocessing Data</a></li>
+<li><a href="#5-analisis-algoritma--metode">Analisis (Algoritma / Metode)</a></li>
+<li><a href="#6-visualisasi-data">Visualisasi Data</a></li>
+<li><a href="#7-hasil-analisis-dan-pembahasan">Hasil Analisis dan Pembahasan</a></li>
+<li><a href="#8-skenario-pengujian-sistem">Skenario Pengujian Sistem</a></li>
+<li><a href="#9-kesimpulan">Kesimpulan</a></li>
+<li><a href="#10-lampiran">Lampiran</a></li>
+</ol>
+<hr>
+<h2 id="1-pendahuluan">1. Pendahuluan</h2>
+<p>Laporan ini menjelaskan teknik analisis data yang diterapkan pada sistem rekomendasi produk Toko Sinar Manis, beserta rangkaian tahapan: pengumpulan data, preprocessing, penerapan algoritma, visualisasi, serta hasil analisis.</p>
+<p>Sistem mempelajari pola pembelian pelanggan dari data transaksi, menghitung kemiripan antarproduk, lalu menyajikan rekomendasi personal. Implementasi utama berada pada layanan <code>RecommenderService</code> (PHP) dan mesin Collaborative Filtering Python (<code>python/cf/</code>).</p>
+<p>Tujuan pengujian dan analisis dalam dokumen ini:</p>
+<ol>
+<li>Menjelaskan teknik analisis data yang digunakan secara konseptual dan teknis.</li>
+<li>Mendokumentasikan sumber data serta cara pengumpulannya.</li>
+<li>Menjelaskan tahapan pembersihan dan transformasi data (ETL).</li>
+<li>Menjabarkan algoritma/metode rekomendasi beserta rumus yang diimplementasikan.</li>
+<li>Menunjukkan bentuk visualisasi hasil analisis di sisi admin dan pelanggan.</li>
+<li>Menyusun kerangka hasil analisis dan skenario pengujian yang dapat diisi dengan angka aktual dari environment pengguna.</li>
+</ol>
+<hr>
+<h2 id="2-teknik-analisis-data">2. Teknik Analisis Data</h2>
+<h3 id="21-jenis-dan-pendekatan-analisis">2.1 Jenis dan Pendekatan Analisis</h3>
+<p>Teknik analisis yang digunakan adalah <strong>analisis pola transaksi pelanggan</strong> (<em>transactional / behavioral analytics</em>) dengan pendekatan <strong>Collaborative Filtering</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Keterangan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jenis analisis</td>
+<td>Analisis pola pembelian bersama antarproduk</td>
+</tr>
+<tr>
+<td>Pendekatan</td>
+<td>Collaborative Filtering</td>
+</tr>
+<tr>
+<td>Varian</td>
+<td><strong>Item-Based Collaborative Filtering (IBCF)</strong></td>
+</tr>
+<tr>
+<td>Representasi data</td>
+<td>Matriks user–item biner</td>
+</tr>
+<tr>
+<td>Metrik kemiripan</td>
+<td><strong>Dice Coefficient</strong> (diimplementasikan di kode)</td>
+</tr>
+<tr>
+<td>Penyempurnaan ranking</td>
+<td>Hybrid scoring (similarity + rating ulasan)</td>
+</tr>
+<tr>
+<td>Evaluasi performa</td>
+<td>Precision@K, Recall@K, F1-Score@K (K = 5)</td>
+</tr>
+</tbody>
+</table>
+<p>Sistem <strong>tidak</strong> menggunakan Apriori/association rules, content-based filtering berbasis fitur produk, maupun matrix factorization sebagai engine utama. Filter kategori pada halaman detail produk bersifat tampilan tambahan, bukan bagian perhitungan matriks CF.</p>
+<h3 id="22-konsep-item-based-collaborative-filtering">2.2 Konsep Item-Based Collaborative Filtering</h3>
+<p>Pada IBCF, kemiripan dihitung antar <strong>item (produk)</strong>, bukan antar user. Asumsi utamanya: jika dua produk sering dibeli oleh pelanggan yang sama, maka keduanya dianggap mirip. Ketika seorang pelanggan membeli produk A, sistem merekomendasikan produk B yang memiliki skor kemiripan tinggi terhadap A.</p>
+<p>Alur konseptual:</p>
+<pre><code>Transaksi selesai → Matriks User×Item → Skor kemiripan antar produk
+       → Simpan product_similarity → Ranking rekomendasi per user
+       → (opsional) Evaluasi Precision/Recall/F1
+</code></pre>
+<h3 id="23-metrik-kemiripan-dice-coefficient">2.3 Metrik Kemiripan: Dice Coefficient</h3>
+<p>Setiap produk digambarkan sebagai himpunan user yang pernah membelinya. Untuk pasangan produk A dan B:</p>
+<p>[
+Dice(A,B) = \frac{2 \times |A \cap B|}{|A| + |B|}
+]</p>
+<p>di mana:</p>
+<ul>
+<li>(|A \cap B|) = jumlah user yang membeli produk A dan B (<em>co-occurrence</em>),</li>
+<li>(|A|), (|B|) = jumlah user unik yang membeli masing-masing produk.</li>
+</ul>
+<p>Setelah semua pasangan dihitung, skor dinormalisasi terhadap nilai maksimum sehingga skor relatif berada pada rentang mendekati ([0,1]):</p>
+<p>[
+score_{norm}(A,B) = \frac{Dice(A,B)}{\max(Dice)}
+]</p>
+<p><strong>Catatan dokumentasi vs implementasi:</strong> antarmuka admin/README sering menyebut <em>cosine similarity</em>, sedangkan implementasi aktual di <code>RecommenderService::calculateCosineSimilarity()</code> dan <code>python/cf/similarity.py</code> menggunakan <strong>Dice Coefficient</strong>. Untuk keperluan ilmiah, laporan ini merujuk pada metrik yang benar-benar dijalankan di kode.</p>
+<h3 id="24-hybrid-scoring">2.4 Hybrid Scoring</h3>
+<p>Setelah kandidat rekomendasi diperoleh dari tabel kemiripan, ranking diperhalus dengan rating ulasan:</p>
+<p>[
+hybrid = (0{,}7 \times similarity) + \left(0{,}3 \times \frac{avg_rating}{5}\right) + boost
+]</p>
+<p>dengan (boost = 0{,}1) jika rata-rata rating (\ge 4{,}0) dan jumlah ulasan (\ge 2); selain itu (boost = 0).</p>
+<p>Bobot 70% similarity menjaga inti Collaborative Filtering, sementara 30% rating menggeser urutan ke produk yang lebih diterima pelanggan.</p>
+<h3 id="25-metrik-evaluasi">2.5 Metrik Evaluasi</h3>
+<p>Pipeline Python mengevaluasi akurasi rekomendasi menggunakan holdout sederhana:</p>
+<ol>
+<li>Untuk setiap user dengan minimal 2 produk berbeda dalam riwayat,</li>
+<li>Satu produk terakhir dijadikan <em>test item</em>, sisanya <em>training</em>,</li>
+<li>Sistem mengambil Top-K rekomendasi dari produk training,</li>
+<li>Dihitung:</li>
+</ol>
+<p>[
+Precision@K = \frac{|rekomendasi \cap test|}{K},\quad
+Recall@K = \frac{|rekomendasi \cap test|}{1}
+]</p>
+<p>[
+F1@K = \frac{2 \times Precision \times Recall}{Precision + Recall}
+]</p>
+<p>Nilai yang dilaporkan adalah rata-rata antar user yang dievaluasi (default (K = 5)).</p>
+<h3 id="26-ruang-lingkup-sinyal-analisis">2.6 Ruang Lingkup Sinyal Analisis</h3>
+<table>
+<thead>
+<tr>
+<th>Sinyal</th>
+<th>Digunakan di matriks CF</th>
+<th>Digunakan di ranking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Riwayat pembelian (transaksi selesai)</td>
+<td>Ya (biner)</td>
+<td>Ya</td>
+</tr>
+<tr>
+<td>Rating/ulasan produk</td>
+<td>Tidak</td>
+<td>Ya (hybrid + filter)</td>
+</tr>
+<tr>
+<td>Jumlah terjual (<code>terjual</code>)</td>
+<td>Tidak</td>
+<td>Ya (fallback best seller)</td>
+</tr>
+<tr>
+<td>View produk</td>
+<td>Tidak</td>
+<td>Tidak</td>
+</tr>
+<tr>
+<td>Isi keranjang</td>
+<td>Tidak</td>
+<td>Tidak</td>
+</tr>
+<tr>
+<td>Kategori produk</td>
+<td>Tidak</td>
+<td>Hanya tampilan terkait</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-teknik-pengumpulan-data">3. Teknik Pengumpulan Data</h2>
+<h3 id="31-sumber-data-primer-transaksi-pembelian">3.1 Sumber Data Primer: Transaksi Pembelian</h3>
+<p>Data interaksi utama dikumpulkan dari aktivitas belanja nyata maupun impor massal.</p>
+<h4 id="a-transaksi-langsung-online">a. Transaksi langsung (online)</h4>
+<p>Pelanggan melakukan alur:</p>
+<p><code>Browse produk → Keranjang → Checkout → Pembayaran (Bayar di Toko / Midtrans)</code></p>
+<p>Data tersimpan pada:</p>
+<table>
+<thead>
+<tr>
+<th>Tabel</th>
+<th>Peran</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>transactions</code></td>
+<td>Header pesanan: user, tanggal, status pesanan, status pembayaran, total</td>
+</tr>
+<tr>
+<td><code>transaction_items</code></td>
+<td>Detail item: <code>id_product</code>, qty, harga satuan</td>
+</tr>
+</tbody>
+</table>
+<p>Sinyal CF dibentuk dari pasangan <code>(id_user, id_product)</code> pada transaksi yang memenuhi filter status.</p>
+<h4 id="b-upload-data-historis-admin">b. Upload data historis (admin)</h4>
+<p>Admin mengunggah file CSV/Excel transaksi melalui menu Upload. File dicatat di <code>data_uploads</code>, diproses pipeline Python, lalu dimuat ke tabel transaksi yang sama. Hash file (SHA-256) mencegah unggah ulang file identik.</p>
+<h3 id="32-sumber-data-sekunder-ulasan-produk">3.2 Sumber Data Sekunder: Ulasan Produk</h3>
+<table>
+<thead>
+<tr>
+<th>Tabel</th>
+<th>Peran</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>product_reviews</code></td>
+<td>Rating 1–5 dan komentar (satu ulasan per user per produk)</td>
+</tr>
+</tbody>
+</table>
+<p>Ulasan dipakai untuk:</p>
+<ul>
+<li>hybrid scoring,</li>
+<li>menyaring produk dengan rating rendah (rata-rata (\le 2{,}0) dengan minimal 2 ulasan),</li>
+<li>ranking fallback cold-start (best seller + rating).</li>
+</ul>
+<h3 id="33-data-pendukung-tidak-masuk-matriks-cf">3.3 Data Pendukung (Tidak Masuk Matriks CF)</h3>
+<table>
+<thead>
+<tr>
+<th>Tabel / entitas</th>
+<th>Keterangan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>products</code>, <code>categories</code></td>
+<td>Katalog; filter produk aktif &amp; stok</td>
+</tr>
+<tr>
+<td><code>product_views</code></td>
+<td>Skema tersedia, belum dipakai engine rekomendasi</td>
+</tr>
+<tr>
+<td><code>cart</code></td>
+<td>Keranjang sesi; bukan input CF</td>
+</tr>
+<tr>
+<td><code>users</code></td>
+<td>Identitas pelanggan</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-data-hasil-perhitungan-dan-audit">3.4 Data Hasil Perhitungan dan Audit</h3>
+<table>
+<thead>
+<tr>
+<th>Tabel</th>
+<th>Peran</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>product_similarity</code></td>
+<td>Skor kemiripan antarproduk (hasil analisis)</td>
+</tr>
+<tr>
+<td><code>recommendation_logs</code></td>
+<td>Jejak rekomendasi yang ditampilkan ke user</td>
+</tr>
+<tr>
+<td><code>cf_run_logs</code></td>
+<td>Log eksekusi batch CF</td>
+</tr>
+<tr>
+<td><code>upload_logs</code></td>
+<td>Log baris ETL upload</td>
+</tr>
+<tr>
+<td><code>system_settings</code></td>
+<td>Flag <code>recommendation_dirty</code> setelah transaksi baru</td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-ringkasan-teknik-pengumpulan">3.5 Ringkasan Teknik Pengumpulan</h3>
+<table>
+<thead>
+<tr>
+<th>Teknik</th>
+<th>Instrumen</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Observasi transaksi digital</td>
+<td>Checkout aplikasi + Midtrans</td>
+<td>Record transaksi &amp; item</td>
+</tr>
+<tr>
+<td>Impor data sekunder</td>
+<td>Template CSV/Excel admin</td>
+<td>Dataset historis terseragamkan</td>
+</tr>
+<tr>
+<td>Umpan balik eksplisit</td>
+<td>Form ulasan produk</td>
+<td>Rating &amp; komentar</td>
+</tr>
+<tr>
+<td>Logging sistem</td>
+<td>Service rekomendasi &amp; pipeline</td>
+<td>Log evaluasi dan audit</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-preprocessing-data">4. Preprocessing Data</h2>
+<p>Preprocessing dijalankan terutama pada pipeline Python setelah upload:</p>
+<p><code>ingest → clean → resolve user → transform → load → (CF + evaluasi)</code></p>
+<h3 id="41-ingest-pythonpipelineingestpy">4.1 Ingest (<code>python/pipeline/ingest.py</code>)</h3>
+<ul>
+<li>Membaca file CSV atau Excel.</li>
+<li>Mendeteksi alias nama kolom secara otomatis.</li>
+<li>Menyiapkan pemetaan kolom ke skema standar sistem.</li>
+</ul>
+<h3 id="42-cleaning-pythonpipelinecleanerpy">4.2 Cleaning (<code>python/pipeline/cleaner.py</code>)</h3>
+<p>Kegiatan pembersihan meliputi:</p>
+<ol>
+<li>Menghapus baris kosong.</li>
+<li>Validasi dan parsing tanggal (multi-format).</li>
+<li>Validasi <code>id_product</code> terhadap produk aktif di database.</li>
+<li>Validasi/resolusi user (<code>id_user</code> atau email).</li>
+<li>Pembersihan angka qty dan harga (menghapus simbol mata uang, normalisasi desimal).</li>
+<li>Mapping nilai metode pembayaran dan status pesanan ke enum sistem.</li>
+<li>Deteksi duplikasi berdasarkan kunci <code>(user/email, tanggal, id_product, qty)</code>.</li>
+<li>Pemisahan record valid vs invalid beserta alasan error per baris.</li>
+</ol>
+<p><strong>Kolom wajib:</strong> <code>tanggal</code>, <code>id_product</code>, <code>qty</code>, <code>harga_satuan</code><br>
+<strong>Kolom opsional:</strong> <code>email</code>, <code>no_hp</code>, <code>id_user</code>, <code>metode_pembayaran</code>, <code>status_pesanan</code></p>
+<h3 id="43-resolusi-user-user_resolverpy">4.3 Resolusi User (<code>user_resolver.py</code>)</h3>
+<ul>
+<li>Mencocokkan email dengan user yang sudah ada.</li>
+<li>Membuat user baru bila diperlukan (untuk data historis yang belum terdaftar).</li>
+</ul>
+<h3 id="44-transformasi-transformerpy">4.4 Transformasi (<code>transformer.py</code>)</h3>
+<p>Baris detail digabung menjadi transaksi berdasarkan <code>(id_user, tanggal)</code>, kemudian dipecah kembali menjadi header transaksi + item line.</p>
+<h3 id="45-load-loaderpy">4.5 Load (<code>loader.py</code>)</h3>
+<p>Data bersih dimasukkan ke MySQL (<code>transactions</code>, <code>transaction_items</code>) dengan penanda sumber upload.</p>
+<h3 id="46-preprocessing-khusus-untuk-collaborative-filtering">4.6 Preprocessing Khusus untuk Collaborative Filtering</h3>
+<p>Sebelum membangun matriks (jalur PHP admin “Hitung Ulang”):</p>
+<ol>
+<li>Filter <code>status_pesanan = 'Selesai'</code>.</li>
+<li>Filter <code>status_pembayaran = 'Dibayar'</code> (pada implementasi PHP).</li>
+<li>Agregasi ke bentuk biner: pernah beli = 1, belum = 0 (qty tidak dipakai sebagai bobot).</li>
+<li>Hanya kolom produk berstatus <code>aktif</code>.</li>
+<li>Pasangan tanpa <em>intersection</em> (tidak ada user bersama) dilewati.</li>
+</ol>
+<blockquote>
+<p>Catatan: jalur Python CF memfilter <code>status_pesanan = 'Selesai'</code> dan menyimpan tetangga Top-K per produk (<code>top_k = 20</code>, <code>min_score = 0.01</code>), sedangkan jalur PHP dapat menyimpan pasangan dua arah secara lebih lengkap sesuai hasil perhitungan.</p>
+</blockquote>
+<hr>
+<h2 id="5-analisis-algoritma-metode">5. Analisis (Algoritma / Metode)</h2>
+<h3 id="51-arsitektur-perhitungan">5.1 Arsitektur Perhitungan</h3>
+<p>Terdapat dua jalur perhitungan kemiripan yang bermuara pada tabel <code>product_similarity</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Jalur</th>
+<th>Pemicu</th>
+<th>Komponen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PHP runtime</td>
+<td>Tombol <strong>Hitung Ulang</strong> di Admin → Analisis</td>
+<td><code>SimilarityController</code> → <code>RecommenderService</code></td>
+</tr>
+<tr>
+<td>Python batch</td>
+<td>Setelah upload CSV/Excel sukses</td>
+<td><code>pipeline_runner</code> → <code>batch_runner</code> → <code>cf_engine</code></td>
+</tr>
+</tbody>
+</table>
+<p>Serving rekomendasi ke pelanggan selalu melalui <code>RecommenderService</code> (PHP), membaca skor yang sudah tersimpan.</p>
+<h3 id="52-tahap-1-membangun-useritem-matrix">5.2 Tahap 1 — Membangun User–Item Matrix</h3>
+<p>Method: <code>buildUserItemMatrix()</code></p>
+<ol>
+<li>Join <code>transactions</code> dengan <code>transaction_items</code>.</li>
+<li>Ambil pasangan user–produk unik pada transaksi valid.</li>
+<li>Bentuk matriks biner <code>user × product</code>.</li>
+</ol>
+<p>Contoh ilustratif:</p>
+<table>
+<thead>
+<tr>
+<th>User</th>
+<th>Produk A</th>
+<th>Produk B</th>
+<th>Produk C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U1</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>U2</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td>U3</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-tahap-2-menghitung-dice-similarity">5.3 Tahap 2 — Menghitung Dice Similarity</h3>
+<p>Method PHP: <code>calculateCosineSimilarity()</code> (nama historis; isi = Dice)<br>
+Fungsi Python: <code>compute_dice_similarity()</code></p>
+<p>Langkah:</p>
+<ol>
+<li>Bangun himpunan pembeli per produk.</li>
+<li>Untuk setiap pasangan produk ((A,B)):
+   - hitung intersection,
+   - hitung Dice,
+   - simpan juga <code>co_occurrence</code>.</li>
+<li>Normalisasi skor terhadap nilai Dice maksimum.</li>
+<li>Simpan ke <code>product_similarity</code> (pasangan A→B dan B→A pada jalur PHP).</li>
+</ol>
+<h3 id="54-tahap-3-generate-rekomendasi-personal">5.4 Tahap 3 — Generate Rekomendasi Personal</h3>
+<p>Method: <code>recommendForCustomer()</code> / <code>getFullRecommendation()</code></p>
+<ol>
+<li>Ambil produk yang pernah dibeli user.</li>
+<li>Jika riwayat kosong → <strong>cold start</strong> (fallback).</li>
+<li>Query tetangga dari <code>product_similarity</code> untuk produk yang dibeli.</li>
+<li>Exclude produk yang sudah dibeli dan produk rating rendah.</li>
+<li>Filter produk aktif dan stok &gt; 0.</li>
+<li>Terapkan hybrid scoring; urutkan menurun.</li>
+<li>Catat ke <code>recommendation_logs</code>.</li>
+<li>Susun alasan tampilan, misalnya: <em>“Sering dibeli bersama {nama produk}”</em>.</li>
+</ol>
+<h3 id="55-tahap-4-fallback-cascade">5.5 Tahap 4 — Fallback Cascade</h3>
+<p>Jika hasil CF kosong atau tidak memadai:</p>
+<ol>
+<li><strong>Buy Again</strong> — produk yang sering dibeli user sebelumnya.</li>
+<li><strong>Best Seller + Rating</strong> — skor gabungan:
+   [
+   (0{,}6 \times \frac{avg_rating}{5}) + (0{,}4 \times \frac{terjual}{\max terjual})
+   ]</li>
+<li><strong>Produk tersedia</strong> — produk aktif berstok, diurut terbaru.</li>
+</ol>
+<h3 id="56-rekomendasi-produk-serupa">5.6 Rekomendasi Produk Serupa</h3>
+<p>Pada halaman detail produk, sistem mencari <code>product_b</code> dengan <code>product_a</code> = produk yang sedang dilihat, diurutkan berdasarkan skor kemiripan dan co-occurrence. Ini memanfaatkan hasil IBCF yang sama.</p>
+<h3 id="57-evaluasi-batch-python">5.7 Evaluasi Batch (Python)</h3>
+<p><code>python/cf/evaluator.py</code> menghitung Precision@5, Recall@5, dan F1@5 setelah matriks kemiripan tersedia. Hasil evaluasi dapat dipakai sebagai indikator kuantitatif pada subbab hasil analisis.</p>
+<h3 id="58-ringkasan-komponen-kode">5.8 Ringkasan Komponen Kode</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Fungsi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/Services/RecommenderService.php</code></td>
+<td>Matrix, Dice, hybrid, fallback, logging</td>
+</tr>
+<tr>
+<td><code>app/Http/Controllers/Api/SimilarityController.php</code></td>
+<td>Endpoint hitung ulang</td>
+</tr>
+<tr>
+<td><code>app/Http/Controllers/Admin/AnalisisController.php</code></td>
+<td>Data dashboard analisis</td>
+</tr>
+<tr>
+<td><code>python/cf/similarity.py</code></td>
+<td>Dice + co-occurrence (numpy)</td>
+</tr>
+<tr>
+<td><code>python/cf/cf_engine.py</code></td>
+<td>Persistensi hasil CF</td>
+</tr>
+<tr>
+<td><code>python/cf/evaluator.py</code></td>
+<td>Precision/Recall/F1</td>
+</tr>
+<tr>
+<td><code>python/pipeline/*</code></td>
+<td>ETL upload transaksi</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-visualisasi-data">6. Visualisasi Data</h2>
+<h3 id="61-dashboard-analisis-admin-adminanalisis">6.1 Dashboard Analisis Admin (<code>/admin/analisis</code>)</h3>
+<p>Halaman ini menjadi pusat visualisasi hasil Collaborative Filtering, antara lain:</p>
+<ol>
+<li>Kartu statistik (jumlah pasangan similarity, coverage, ringkasan run).</li>
+<li><strong>Grafik distribusi skor</strong> (Chart.js — bar chart) untuk melihat sebaran nilai kemiripan.</li>
+<li>Tabel Top produk yang sering muncul di rekomendasi.</li>
+<li>Riwayat eksekusi CF (<code>cf_run_logs</code>).</li>
+<li>Tabel pasangan produk mirip (product_a, product_b, score, co-occurrence).</li>
+<li>Log rekomendasi harian.</li>
+<li>Tombol <strong>Hitung Ulang</strong> untuk menjalankan ulang perhitungan PHP.</li>
+</ol>
+<h3 id="62-visualisasi-lain-di-admin">6.2 Visualisasi Lain di Admin</h3>
+<table>
+<thead>
+<tr>
+<th>Halaman</th>
+<th>Visualisasi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/admin/dashboard</code></td>
+<td>Grafik transaksi/pendapatan bulanan; popularitas kategori</td>
+</tr>
+<tr>
+<td><code>/admin/reviews</code></td>
+<td>Distribusi rating bintang 1–5 (Chart.js)</td>
+</tr>
+<tr>
+<td><code>/admin/laporan</code></td>
+<td>Laporan transaksi dengan filter tanggal</td>
+</tr>
+<tr>
+<td><code>/admin/upload</code></td>
+<td>Status progress pipeline ETL + CF</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-visualisasi-presentasi-di-sisi-pelanggan">6.3 Visualisasi / Presentasi di Sisi Pelanggan</h3>
+<table>
+<thead>
+<tr>
+<th>Halaman</th>
+<th>Bentuk penyajian hasil analisis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/rekomendasi</code></td>
+<td>Kartu rekomendasi personal + badge metode + alasan</td>
+</tr>
+<tr>
+<td>Detail produk</td>
+<td>Bagian “Produk Serupa” berbasis similarity</td>
+</tr>
+<tr>
+<td>Beranda</td>
+<td>Penjelasan singkat mekanisme rekomendasi (edukatif)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="64-api-pendukung">6.4 API Pendukung</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Fungsi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/rekomendasi?action=personal\|similar\|popular</code></td>
+<td>Data rekomendasi JSON</td>
+</tr>
+<tr>
+<td><code>POST /admin/similarity</code></td>
+<td>Trigger perhitungan ulang</td>
+</tr>
+<tr>
+<td><code>GET /admin/pipeline-status</code></td>
+<td>Status pipeline upload</td>
+</tr>
+</tbody>
+</table>
+<p>Visualisasi bersifat <em>dashboard analytics</em> untuk admin dan <em>recommendation UI</em> untuk pelanggan; keduanya menggunakan hasil analisis yang sama dari <code>product_similarity</code>.</p>
+<hr>
+<h2 id="7-hasil-analisis-dan-pembahasan">7. Hasil Analisis dan Pembahasan</h2>
+<blockquote>
+<p>Subbab ini menyediakan kerangka hasil. <strong>Isi angka aktual</strong> setelah menjalankan perhitungan CF pada dataset environment Anda (Admin → Analisis / setelah upload pipeline).</p>
+</blockquote>
+<h3 id="71-ringkasan-dataset-uji">7.1 Ringkasan Dataset Uji</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Nilai (isi hasil aktual)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jumlah transaksi selesai</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Jumlah user dengan riwayat beli</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Jumlah produk aktif</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Jumlah pasangan di <code>product_similarity</code></td>
+<td>…</td>
+</tr>
+<tr>
+<td>Coverage matriks / produk berkoneksi</td>
+<td>… %</td>
+</tr>
+<tr>
+<td>Tanggal terakhir hitung ulang CF</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-hasil-perhitungan-kemiripan">7.2 Hasil Perhitungan Kemiripan</h3>
+<p>Temuan yang diharapkan untuk dibahas:</p>
+<ol>
+<li>Distribusi skor (dari grafik admin): apakah mayoritas pasangan lemah, sedang, atau kuat.</li>
+<li>Contoh pasangan produk dengan skor tertinggi dan interpretasi bisnis (apakah masuk akal dibeli bersama).</li>
+<li>Peran <code>co_occurrence</code> sebagai bukti frekuensi pembelian bersama.</li>
+</ol>
+<p><strong>Contoh tabel hasil (template):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Produk A</th>
+<th>Produk B</th>
+<th>Score</th>
+<th>Co-occurrence</th>
+<th>Interpretasi singkat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>Sering dibeli bersama</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73-hasil-evaluasi-kuantitatif">7.3 Hasil Evaluasi Kuantitatif</h3>
+<p>Ambil dari output evaluator / log CF:</p>
+<table>
+<thead>
+<tr>
+<th>Metrik</th>
+<th>Nilai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Precision@5</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Recall@5</td>
+<td>…</td>
+</tr>
+<tr>
+<td>F1-Score@5</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Jumlah user dievaluasi</td>
+<td>…</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pembahasan singkat yang disarankan:</strong></p>
+<ul>
+<li>Precision rendah dapat terjadi jika katalog besar dan Top-5 jarang mengenai tepat satu <em>holdout item</em>.</li>
+<li>Recall@5 pada skema holdout 1 item bernilai 0 atau 1 per user; rata-rata mencerminkan proporsi user yang “terkena” rekomendasi.</li>
+<li>F1 menyeimbangkan keduanya sebagai ringkasan tunggal.</li>
+</ul>
+<h3 id="74-hasil-uji-fungsional-rekomendasi">7.4 Hasil Uji Fungsional Rekomendasi</h3>
+<table>
+<thead>
+<tr>
+<th>Kondisi user</th>
+<th>Perilaku sistem yang diamati</th>
+<th>Sumber rekomendasi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Memiliki riwayat transaksi selesai</td>
+<td>Muncul rekomendasi personal + alasan</td>
+<td>CF + hybrid</td>
+</tr>
+<tr>
+<td>Belum pernah beli / guest</td>
+<td>Muncul produk populer / best seller</td>
+<td>Fallback</td>
+</tr>
+<tr>
+<td>Membuka detail produk</td>
+<td>Muncul produk serupa</td>
+<td>Similarity item</td>
+</tr>
+<tr>
+<td>Produk stok habis / nonaktif</td>
+<td>Tidak ditampilkan</td>
+<td>Filter stok &amp; status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="75-pembahasan-kelebihan-dan-keterbatasan">7.5 Pembahasan Kelebihan dan Keterbatasan</h3>
+<p><strong>Kelebihan</strong></p>
+<ol>
+<li>Memanfaatkan data transaksi riil (implisit), tidak bergantung pada pengisian profil.</li>
+<li>Hybrid scoring mengurangi risiko merekomendasikan produk mirip tetapi berkualitas rendah.</li>
+<li>Ada jalur batch (Python) untuk data besar dan jalur manual (PHP) untuk hitung ulang cepat.</li>
+<li>Tersedia logging dan dashboard analisis untuk audit hasil.</li>
+</ol>
+<p><strong>Keterbatasan</strong></p>
+<ol>
+<li>Cold-start user baru belum bisa dipersonalisasi penuh tanpa riwayat.</li>
+<li>Produk baru yang jarang dibeli sulit mendapat tetangga similarity.</li>
+<li>Matriks biner mengabaikan intensitas qty/frekuensi sebagai bobot.</li>
+<li>View produk belum dimanfaatkan sebagai sinyal minat.</li>
+<li>Perbedaan filter status antara PHP dan Python perlu diperhatikan saat membandingkan hasil.</li>
+</ol>
+<h3 id="76-implikasi-untuk-toko-sinar-manis">7.6 Implikasi untuk Toko Sinar Manis</h3>
+<p>Hasil analisis kemiripan dapat dipakai untuk:</p>
+<ul>
+<li>menata <em>cross-selling</em> di kasir/online,</li>
+<li>menyusun bundling produk yang sering dibeli bersama,</li>
+<li>memantau produk yang sering direkomendasikan tetapi stoknya menipis,</li>
+<li>mengevaluasi ulang katalog yang jarang muncul di tetangga similarity.</li>
+</ul>
+<hr>
+<h2 id="8-skenario-pengujian-sistem">8. Skenario Pengujian Sistem</h2>
+<h3 id="81-pengujian-black-box">8.1 Pengujian Black-Box</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Skenario</th>
+<th>Langkah</th>
+<th>Hasil yang diharapkan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Uji-01</td>
+<td>Hitung ulang similarity</td>
+<td>Login admin → Analisis → Hitung Ulang</td>
+<td><code>product_similarity</code> terisi; statistik terbarui</td>
+</tr>
+<tr>
+<td>Uji-02</td>
+<td>Upload transaksi</td>
+<td>Upload CSV valid → pantau pipeline</td>
+<td>Transaksi masuk; CF batch jalan; log sukses</td>
+</tr>
+<tr>
+<td>Uji-03</td>
+<td>Upload data kotor</td>
+<td>Upload CSV dengan tanggal/produk invalid</td>
+<td>Baris invalid ditolak; tercatat di <code>upload_logs</code></td>
+</tr>
+<tr>
+<td>Uji-04</td>
+<td>Rekomendasi user berriwayat</td>
+<td>Login pelanggan yang punya transaksi selesai → <code>/rekomendasi</code></td>
+<td>Muncul rekomendasi CF + alasan</td>
+</tr>
+<tr>
+<td>Uji-05</td>
+<td>Cold start</td>
+<td>Login user tanpa transaksi → <code>/rekomendasi</code></td>
+<td>Fallback best seller / produk tersedia</td>
+</tr>
+<tr>
+<td>Uji-06</td>
+<td>Produk serupa</td>
+<td>Buka detail produk yang punya tetangga</td>
+<td>Section produk serupa tampil</td>
+</tr>
+<tr>
+<td>Uji-07</td>
+<td>Filter stok</td>
+<td>Habiskan stok produk rekomendasi</td>
+<td>Produk tidak muncul di rekomendasi</td>
+</tr>
+<tr>
+<td>Uji-08</td>
+<td>Rating rendah</td>
+<td>Beri ≥2 ulasan dengan rata-rata ≤2 pada suatu produk</td>
+<td>Produk tersaring dari kandidat</td>
+</tr>
+<tr>
+<td>Uji-09</td>
+<td>Log rekomendasi</td>
+<td>Tampilkan rekomendasi lalu cek admin/analisis</td>
+<td>Ada entri <code>recommendation_logs</code></td>
+</tr>
+<tr>
+<td>Uji-10</td>
+<td>Evaluasi metrik</td>
+<td>Jalankan CF Python + evaluator</td>
+<td>Tercatat Precision/Recall/F1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-pengujian-validasi-rumus-sampel-manual">8.2 Pengujian Validasi Rumus (Sampel Manual)</h3>
+<p>Untuk satu pasangan produk A dan B:</p>
+<ol>
+<li>Hitung manual jumlah pembeli A, B, dan irisan dari database.</li>
+<li>Hitung Dice manual.</li>
+<li>Bandingkan dengan nilai di <code>product_similarity</code> (perhatikan normalisasi terhadap max).</li>
+</ol>
+<p>Template:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Nilai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>|A|</td>
+<td>…</td>
+</tr>
+<tr>
+<td>|B|</td>
+<td>…</td>
+</tr>
+<tr>
+<td>|A ∩ B|</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Dice mentah</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Score tersimpan (setelah normalisasi)</td>
+<td>…</td>
+</tr>
+<tr>
+<td>Sesuai?</td>
+<td>Ya / Tidak</td>
+</tr>
+</tbody>
+</table>
+<h3 id="83-kriteria-keberhasilan-pengujian">8.3 Kriteria Keberhasilan Pengujian</h3>
+<p>Pengujian dianggap berhasil jika:</p>
+<ol>
+<li>Pipeline ETL menolak data invalid dan menerima data valid.</li>
+<li>Perhitungan similarity menghasilkan pasangan dengan <code>score &gt; 0</code> dan <code>co_occurrence ≥ 1</code>.</li>
+<li>Halaman rekomendasi menampilkan sumber yang konsisten (CF atau fallback).</li>
+<li>Dashboard analisis menampilkan grafik dan tabel tanpa error.</li>
+<li>Metrik evaluasi dapat dihasilkan ulang setelah batch CF.</li>
+</ol>
+<hr>
+<h2 id="9-kesimpulan">9. Kesimpulan</h2>
+<ol>
+<li>Teknik analisis data pada sistem Toko Sinar Manis adalah <strong>Item-Based Collaborative Filtering</strong> atas data transaksi, dengan metrik <strong>Dice Coefficient</strong>, diperkuat <strong>hybrid scoring</strong> berbasis rating.</li>
+<li>Pengumpulan data mengandalkan transaksi online, impor CSV/Excel, dan ulasan produk; sinyal utama CF adalah pembelian implisit biner.</li>
+<li>Preprocessing dilakukan melalui pipeline ETL Python (validasi, cleaning, resolusi user, transformasi, load) serta filter status transaksi sebelum pembentukan matriks.</li>
+<li>Analisis dijalankan dalam dua jalur (PHP dan Python) yang menyimpan hasil ke <code>product_similarity</code>, lalu disajikan sebagai rekomendasi personal dan produk serupa.</li>
+<li>Visualisasi hasil tersedia di dashboard admin (distribusi skor, statistik CF, log) dan antarmuka pelanggan (daftar rekomendasi serta alasan).</li>
+<li>Hasil analisis kuantitatif (Precision/Recall/F1) dan kualitatif (contoh pasangan produk, perilaku cold-start) dilengkapi melalui skenario pengujian pada Bab 8 dan diisi dengan data aktual dari environment produksi/pengujian.</li>
+</ol>
+<hr>
+<h2 id="10-lampiran">10. Lampiran</h2>
+<h3 id="lampiran-a-rumus-ringkas">Lampiran A — Rumus Ringkas</h3>
+<p><strong>Dice Similarity</strong></p>
+<p>[
+Dice(A,B)=\frac{2|A\cap B|}{|A|+|B|}
+]</p>
+<p><strong>Hybrid Score</strong></p>
+<p>[
+hybrid=0{,}7\cdot sim+0{,}3\cdot\frac{\bar{r}}{5}+
+\begin{cases}
+0{,}1 &amp; \text{jika }\bar{r}\ge 4\text{ dan }n\ge 2\
+0 &amp; \text{selainnya}
+\end{cases}
+]</p>
+<p><strong>Best Seller Fallback</strong></p>
+<p>[
+score=0{,}6\cdot\frac{\bar{r}}{5}+0{,}4\cdot\frac{terjual}{\max(terjual)}
+]</p>
+<h3 id="lampiran-b-struktur-tabel-inti">Lampiran B — Struktur Tabel Inti</h3>
+<ul>
+<li><code>users</code></li>
+<li><code>products</code>, <code>categories</code></li>
+<li><code>transactions</code>, <code>transaction_items</code></li>
+<li><code>product_reviews</code></li>
+<li><code>product_similarity</code></li>
+<li><code>recommendation_logs</code></li>
+<li><code>data_uploads</code>, <code>upload_logs</code></li>
+<li><code>cf_run_logs</code></li>
+</ul>
+<h3 id="lampiran-c-file-implementasi-utama">Lampiran C — File Implementasi Utama</h3>
+<ul>
+<li><code>app/Services/RecommenderService.php</code></li>
+<li><code>app/Http/Controllers/Api/SimilarityController.php</code></li>
+<li><code>app/Http/Controllers/Admin/AnalisisController.php</code></li>
+<li><code>app/Http/Controllers/RekomendasiController.php</code></li>
+<li><code>python/pipeline/pipeline_runner.py</code></li>
+<li><code>python/pipeline/cleaner.py</code></li>
+<li><code>python/cf/similarity.py</code></li>
+<li><code>python/cf/cf_engine.py</code></li>
+<li><code>python/cf/evaluator.py</code></li>
+<li><code>resources/views/admin/analisis.blade.php</code></li>
+<li><code>resources/views/customer/rekomendasi.blade.php</code></li>
+</ul>
+<h3 id="lampiran-d-cara-mengisi-angka-hasil-aktual">Lampiran D — Cara Mengisi Angka Hasil Aktual</h3>
+<ol>
+<li>Pastikan ada transaksi dengan status selesai (dan dibayar untuk jalur PHP).</li>
+<li>Jalankan <strong>Hitung Ulang</strong> di <code>/admin/analisis</code> atau upload CSV hingga pipeline selesai.</li>
+<li>Catat statistik di halaman analisis (pasangan, coverage, distribusi skor).</li>
+<li>Ambil Precision@5, Recall@5, F1@5 dari log CF / output evaluator.</li>
+<li>Salin contoh Top pasangan similarity ke tabel Bab 7.</li>
+<li>Lakukan skenario Uji-04 s.d. Uji-06 dan lampirkan screenshot.</li>
+</ol>
+<h3 id="lampiran-e-glosarium-singkat">Lampiran E — Glosarium Singkat</h3>
+<table>
+<thead>
+<tr>
+<th>Istilah</th>
+<th>Arti</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IBCF</td>
+<td>Item-Based Collaborative Filtering</td>
+</tr>
+<tr>
+<td>Cold start</td>
+<td>Kondisi user/produk tanpa cukup riwayat</td>
+</tr>
+<tr>
+<td>Co-occurrence</td>
+<td>Jumlah user yang membeli dua produk sekaligus</td>
+</tr>
+<tr>
+<td>Holdout</td>
+<td>Data uji yang disisihkan untuk evaluasi</td>
+</tr>
+<tr>
+<td>ETL</td>
+<td>Extract, Transform, Load</td>
+</tr>
+<tr>
+<td>Hybrid scoring</td>
+<td>Penggabungan skor similarity dan rating</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>Dokumen ini disusun berdasarkan implementasi kode pada repositori sistem rekomendasi produk Toko Sinar Manis (Laravel + Python CF). Angka hasil evaluasi pada Bab 7 perlu dilengkapi dari environment pengujian pengguna.</em></p>
+</body>
+</html>

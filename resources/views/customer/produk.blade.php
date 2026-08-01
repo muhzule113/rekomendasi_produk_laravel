@@ -51,7 +51,6 @@
 </section>
 
 @push('scripts')
-<script src="{{ asset('assets/js/main.js') }}"></script>
 <script>
 const emojiMap = {'Sembako':'🛒','Makanan Instan':'🍜','Minuman':'🧃','Kebersihan':'🧼','Kebutuhan Mandi & Cuci':'🧴'};
 function getEmoji(cat) { return emojiMap[cat] || '📦'; }

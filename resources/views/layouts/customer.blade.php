@@ -160,7 +160,7 @@
                 <span class="footer-brand-name">Toko Sinar Manis</span>
             </div>
             <p class="footer-desc">
-                Sistem toko berbasis web dengan modul rekomendasi produk berbasis <a href="#" style="color:var(--primary);font-weight:500;">analisis</a> big data terhadap transaksi pelanggan.
+                Sistem toko berbasis web dengan modul rekomendasi produk berbasis <a href="#" style="color:var(--primary);font-weight:500;">analisis data transaksi</a> pelanggan.
             </p>
         </div>
         <div>
