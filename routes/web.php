@@ -30,6 +30,7 @@ Route::middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class])->gr
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::post('/checkout', [\App\Http\Controllers\CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/riwayat', [\App\Http\Controllers\RiwayatController::class, 'index'])->name('riwayat');
+    Route::post('/api/review', [\App\Http\Controllers\Api\ReviewController::class, 'store'])->name('api.review.store');
 });
 
 // ── Admin Panel ──

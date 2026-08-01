@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -12,14 +11,13 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * Kredensial admin tidak di-hardcode. Buat admin development dengan:
+     *   php artisan app:create-admin
+     * (membaca ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_NAME dari environment)
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Sengaja kosong: data demo/admin tidak boleh berisi password tetap di repo.
     }
 }

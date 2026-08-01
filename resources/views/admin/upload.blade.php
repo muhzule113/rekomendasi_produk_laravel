@@ -35,9 +35,9 @@
         <a href="{{ asset('uploads/templates/template_transaksi.csv') }}"
            style="color:var(--primary);margin-right:1rem;" download>Download Template CSV</a>
         <p style="font-size:.8rem;color:#888;margin-top:.5rem;">
-            Kolom wajib: <code>tanggal, id_product, qty, harga_satuan</code><br>
-            Kolom opsional: <code>email, no_hp, metode_pembayaran, status_pesanan</code>
-            &mdash; Jika <code>email</code> diisi dan belum terdaftar, user baru akan dibuat otomatis (password default: <code>pelanggan123</code>).
+            Kolom disarankan: <code>kode_transaksi, tanggal, id_user, email, id_product, qty, harga_satuan, metode_pembayaran, status_pembayaran, status_pesanan</code><br>
+            Wajib cocokkan pelanggan lewat <code>id_user</code> aktif atau <code>email</code> akun yang sudah ada.
+            Baris dengan pelanggan yang tidak dapat dicocokkan akan ditolak (tidak ada auto-create / password default).
         </p>
     </div>
 

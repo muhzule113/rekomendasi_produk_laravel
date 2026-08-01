@@ -1,2 +1,2 @@
-tanggal,id_product,qty,harga_satuan,email,no_hp,metode_pembayaran,status_pesanan
-2025-01-15,1,2,25000,pembeli@example.com,081234567890,Transfer,Selesai
+kode_transaksi,tanggal,id_user,email,id_product,qty,harga_satuan,metode_pembayaran,status_pembayaran,status_pesanan
+TRX-DEMO-001,2025-01-15,2,pembeli@example.com,1,2,25000,Transfer,Dibayar,Selesai

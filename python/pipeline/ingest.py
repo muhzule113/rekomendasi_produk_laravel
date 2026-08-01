@@ -39,16 +39,18 @@ def detect_columns(df: pd.DataFrame) -> dict:
     cols_lower = {c.lower().strip(): c for c in df.columns}
 
     aliases = {
-        'tanggal':          ['tanggal', 'date', 'tgl', 'waktu', 'transaction_date', 'order_date'],
-        'id_product':       ['id_product', 'product_id', 'kode_produk', 'id produk', 'produk_id'],
-        'nama_product':     ['nama_product', 'nama produk', 'product_name', 'nama barang'],
-        'qty':              ['qty', 'jumlah', 'quantity', 'kuantitas', 'banyak'],
-        'harga_satuan':     ['harga_satuan', 'harga', 'price', 'harga satuan', 'unit_price'],
-        'id_user':          ['id_user', 'user_id', 'id pelanggan', 'customer_id', 'pelanggan_id'],
-        'metode_pembayaran':['metode_pembayaran', 'metode', 'payment_method', 'pembayaran'],
-        'status_pesanan':   ['status_pesanan', 'status', 'order_status'],
-        'email':            ['email', 'e-mail', 'surel'],
-        'no_hp':            ['no_hp', 'no hp', 'nomor_hp', 'phone', 'no_telp', 'telepon'],
+        'tanggal':           ['tanggal', 'date', 'tgl', 'waktu', 'transaction_date', 'order_date'],
+        'id_product':        ['id_product', 'product_id', 'kode_produk', 'id produk', 'produk_id'],
+        'nama_product':      ['nama_product', 'nama produk', 'product_name', 'nama barang'],
+        'qty':               ['qty', 'jumlah', 'quantity', 'kuantitas', 'banyak'],
+        'harga_satuan':      ['harga_satuan', 'harga', 'price', 'harga satuan', 'unit_price'],
+        'id_user':           ['id_user', 'user_id', 'id pelanggan', 'customer_id', 'pelanggan_id'],
+        'kode_transaksi':    ['kode_transaksi', 'transaction_id', 'trx_id', 'kode transaksi', 'order_id', 'no_transaksi'],
+        'metode_pembayaran': ['metode_pembayaran', 'metode', 'payment_method', 'pembayaran'],
+        'status_pesanan':    ['status_pesanan', 'status', 'order_status'],
+        'status_pembayaran': ['status_pembayaran', 'payment_status', 'status bayar'],
+        'email':             ['email', 'e-mail', 'surel'],
+        'no_hp':             ['no_hp', 'no hp', 'nomor_hp', 'phone', 'no_telp', 'telepon'],
     }
 
     for field, alias_list in aliases.items():

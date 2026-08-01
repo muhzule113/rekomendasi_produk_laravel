@@ -19,25 +19,52 @@ class RekomendasiController extends Controller
         switch ($action) {
             case 'similar':
                 $data = $recommender->getProductSimilar($id_product, $limit);
-                $recommender->logRecommendationItems($id_user, $data, 'CF_similarity', 'score');
-                return response()->json(['status' => 'ok', 'data' => $data]);
+                $recommender->logRecommendationItems($id_user, $data, RecommenderService::LOG_IBCF, 'score');
+                return response()->json(['status' => 'ok', 'data' => $data, 'method' => RecommenderService::METHOD_IBCF]);
 
             case 'personal':
                 $user = auth()->user();
                 if (!$user || $user->role !== 'pelanggan') {
+                    $popular = $recommender->getPopularProducts($limit);
+                    $recommender->logRecommendationItems(
+                        $id_user,
+                        $popular,
+                        RecommenderService::LOG_COLD_START,
+                        'avg_rating'
+                    );
                     return response()->json([
                         'status' => 'ok',
-                        'data'   => $recommender->getPopularProducts($limit),
+                        'data' => $popular,
+                        'method' => RecommenderService::METHOD_COLD_START,
                     ]);
                 }
-                $data = $recommender->getPersonalRecommendations($id_user, $limit);
-                $recommender->logRecommendationItems($id_user, $data, 'CF_personal', 'hybrid_score', 'score');
-                return response()->json(['status' => 'ok', 'data' => $data]);
+                $full = $recommender->getFullRecommendation($id_user, $limit);
+                $recommender->logRecommendationItems(
+                    $id_user,
+                    $full['data'],
+                    $full['log_source'],
+                    'prediction_score',
+                    'score'
+                );
+                return response()->json([
+                    'status' => 'ok',
+                    'data' => $full['data'],
+                    'method' => $full['method'],
+                ]);
 
             case 'popular':
                 $data = $recommender->getPopularProducts($limit);
-                $recommender->logRecommendationItems($id_user, $data, 'popular', 'avg_rating');
-                return response()->json(['status' => 'ok', 'data' => $data]);
+                $recommender->logRecommendationItems(
+                    $id_user,
+                    $data,
+                    RecommenderService::LOG_COLD_START,
+                    'avg_rating'
+                );
+                return response()->json([
+                    'status' => 'ok',
+                    'data' => $data,
+                    'method' => RecommenderService::METHOD_COLD_START,
+                ]);
 
             default:
                 return response()->json(['status' => false, 'message' => 'Action tidak dikenal']);
