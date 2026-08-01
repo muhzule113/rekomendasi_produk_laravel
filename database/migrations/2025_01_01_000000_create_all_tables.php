@@ -210,7 +210,7 @@ return new class extends Migration
                 $table->text('komentar')->nullable();
                 $table->dateTime('created_at')->useCurrent();
 
-                $table->unique(['id_user', 'id_product'], 'uk_user_product');
+                $table->unique(['id_user', 'id_product'], 'uk_review_user_product');
             });
         }
 
@@ -238,7 +238,7 @@ return new class extends Migration
                 $table->dateTime('created_at')->useCurrent();
                 $table->dateTime('updated_at')->useCurrent();
 
-                $table->unique(['id_user', 'id_product'], 'uk_user_product');
+                $table->unique(['id_user', 'id_product'], 'uk_cart_user_product');
             });
         }
 

@@ -168,9 +168,9 @@ $isLoggedIn = Auth::check() && Auth::user()->role === 'pelanggan';
                 <div class="grid-3" style="margin-top:.875rem;">
                     @php
                     $steps = [
-                        'Sistem mengumpulkan seluruh data transaksi pelanggan.',
-                        'Hubungan antarproduk dihitung dengan cosine similarity.',
-                        'Produk dengan skor kemiripan tertinggi disarankan kepada Anda.'
+                        'Sistem memakai transaksi valid (Selesai + Dibayar) sebagai matriks interaksi biner.',
+                        'Kemiripan antarproduk dihitung dengan Item-Based CF — cosine similarity (tanpa rating).',
+                        'Skor prediksi diagregasi dari seluruh riwayat pembelian Anda, lalu diurutkan.'
                     ];
                     @endphp
                     @foreach($steps as $i => $step)

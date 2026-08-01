@@ -39,45 +39,58 @@ class SimilarityController extends Controller
             $stats        = $result['stats'];
 
             if (empty($similarities)) {
+                DB::table('cf_run_logs')->insert([
+                    'started_at' => now()->subSeconds(max(0, microtime(true) - $start_time)),
+                    'finished_at' => now(),
+                    'total_users' => $stats['total_users'] ?? 0,
+                    'total_products' => $stats['total_products_in_matrix'] ?? 0,
+                    'total_pairs' => 0,
+                    'coverage' => $stats['coverage_percentage'] ?? 0,
+                    'max_score' => 0,
+                    'avg_score' => 0,
+                    'duration_seconds' => (int) round(microtime(true) - $start_time),
+                    'status' => 'failed',
+                    'error_message' => 'Hasil kosong; data similarity lama tidak diganti.',
+                ]);
+
                 return response()->json([
-                    'status'  => false,
-                    'message' => 'Hasil perhitungan similarity kosong (kemungkinan tidak ada user yang membeli >1 produk yang sama).',
+                    'status' => false,
+                    'message' => 'Hasil perhitungan similarity kosong (ambang co-occurrence / data tidak cukup). Data lama tidak diganti.',
                 ]);
             }
 
-            // 3. Save similarity
+            // 3. Save similarity (atomic; clear dirty only on success)
             $success = $service->saveSimilarity($similarities);
 
-            $end_time       = microtime(true);
+            $end_time = microtime(true);
             $execution_time = round($end_time - $start_time, 4);
 
             if ($success) {
                 $stats['execution_time_seconds'] = $execution_time;
 
-                // Log to cf_run_logs
                 DB::table('cf_run_logs')->insert([
-                    'started_at'       => now()->subSeconds($execution_time),
-                    'finished_at'      => now(),
-                    'total_users'      => $stats['total_users'] ?? 0,
-                    'total_products'   => $stats['total_products_in_matrix'] ?? 0,
-                    'total_pairs'      => $stats['saved_pairs'] ?? 0,
-                    'coverage'         => $stats['coverage_percentage'] ?? 0,
-                    'max_score'        => $stats['max_score'] ?? 0,
-                    'avg_score'        => $stats['avg_score'] ?? 0,
-                    'duration_seconds' => $execution_time,
-                    'status'           => 'success',
+                    'started_at' => now()->subSeconds((int) ceil($execution_time)),
+                    'finished_at' => now(),
+                    'total_users' => $stats['total_users'] ?? 0,
+                    'total_products' => $stats['total_products_in_matrix'] ?? 0,
+                    'total_pairs' => $stats['saved_pairs'] ?? 0,
+                    'coverage' => $stats['coverage_percentage'] ?? 0,
+                    'max_score' => $stats['max_score'] ?? 0,
+                    'avg_score' => $stats['avg_score'] ?? 0,
+                    'duration_seconds' => (int) round($execution_time),
+                    'status' => 'success',
                 ]);
 
                 Log::info("[Similarity Calculation] Success. Time: {$execution_time}s, Users: {$stats['total_users']}, Pairs: {$stats['saved_pairs']}");
 
                 return response()->json([
-                    'status'  => true,
-                    'message' => 'Perhitungan similarity berhasil dan disimpan.',
+                    'status' => true,
+                    'message' => 'Perhitungan cosine similarity berhasil dan disimpan.',
                     'summary' => $stats,
                 ]);
-            } else {
-                throw new \Exception('Gagal menyimpan similarity ke database.');
             }
+
+            throw new \Exception('Gagal menyimpan similarity ke database.');
         } catch (\Exception $e) {
             Log::error("[Similarity Calculation] Error: " . $e->getMessage());
             return response()->json([

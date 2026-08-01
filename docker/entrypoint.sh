@@ -37,7 +37,7 @@ case " $* " in
     php artisan route:cache
     php artisan view:cache
     php artisan storage:link --force 2>/dev/null || true
-    php artisan migrate --force
+    # skip migrate — DB already migrated via external volume
     ;;
 esac
 

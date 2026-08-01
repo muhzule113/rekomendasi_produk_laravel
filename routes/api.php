@@ -14,7 +14,6 @@ Route::get('/rekomendasi', [\App\Http\Controllers\Api\RekomendasiController::cla
 // Protected routes
 Route::middleware('auth')->group(function () {
     Route::post('/checkout', [\App\Http\Controllers\Api\CheckoutController::class, 'store']);
-    Route::post('/review', [\App\Http\Controllers\Api\ReviewController::class, 'store']);
 });
 
 // Admin-only routes — moved to web.php for session auth

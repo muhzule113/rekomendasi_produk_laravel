@@ -19,12 +19,25 @@ class RekomendasiController extends Controller
         $recommendations = $this->applyCartStock($recommendations, $cart, $stockMap);
         $popular = $this->applyCartStock($popular, $cart, $stockMap);
 
-        $recommender->logRecommendationItems($userId, $recommendations, 'CF_personal', 'hybrid_score', 'score');
-        $recommender->logRecommendationItems($userId, $popular, 'popular', 'avg_rating');
+        $logSource = $data['log_source'] ?? RecommenderService::LOG_IBCF;
+        $recommender->logRecommendationItems(
+            $userId,
+            $recommendations,
+            $logSource,
+            'prediction_score',
+            'score'
+        );
+        $recommender->logRecommendationItems(
+            $userId,
+            $popular,
+            RecommenderService::LOG_COLD_START,
+            'avg_rating'
+        );
 
         return view('customer.rekomendasi', [
             'method' => $data['method'],
             'message' => $data['message'],
+            'log_source' => $logSource,
             'recommendations' => $recommendations,
             'popular' => $popular,
             'stockMap' => $stockMap,

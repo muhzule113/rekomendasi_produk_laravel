@@ -37,11 +37,10 @@ class ReviewController extends Controller
         try {
             DB::table('product_reviews')->insert([
                 'id_product' => $id_product,
-                'id_user'    => $user->id_user,
-                'rating'     => $rating,
-                'komentar'   => $komentar,
+                'id_user' => $user->id_user,
+                'rating' => $rating,
+                'komentar' => $komentar,
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             // Recalculate avg rating

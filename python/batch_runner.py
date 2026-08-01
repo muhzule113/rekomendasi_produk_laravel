@@ -16,7 +16,7 @@ if not os.path.exists(log_dir):
 logging.basicConfig(
     filename=os.path.join(log_dir, 'cf_batch.log'),
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
 )
 
 
@@ -24,8 +24,9 @@ def main():
     start = datetime.now()
     logging.info("BATCH CF ENGINE DIMULAI")
     try:
-        run_cf_engine()
-        results = run_evaluation(k=5)
+        engine_result = run_cf_engine()
+        logging.info(f"CF Engine: {engine_result}")
+        results = run_evaluation(k_values=[5, 10], persist=True)
         logging.info(f"Evaluasi: {results}")
         logging.info("SUKSES")
         print(results)

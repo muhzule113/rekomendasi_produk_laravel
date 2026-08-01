@@ -1,89 +1,77 @@
 # python/pipeline/user_resolver.py
 """
-Resolve user ID untuk record dengan id_user = 0.
-Cari user berdasarkan email di database.
-Kalau belum ada, auto-create user baru dengan password default "pelanggan123".
+Resolve id_user untuk baris upload.
+Hanya mencocokkan akun pelanggan aktif yang sudah ada (id_user atau email).
+Tidak membuat akun baru dan tidak memakai fallback id_user=1.
 """
+import re
 import pymysql
-import bcrypt
 from config import DB_CONFIG
 
-DEFAULT_PASSWORD = "pelanggan123"
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
-def _hash_password(password: str) -> str:
-    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    # PHP/Laravel expects $2y$; Python bcrypt emits $2b$ (same algo, different prefix).
-    if hashed.startswith('$2b$'):
-        hashed = '$2y$' + hashed[4:]
-    return hashed
+def resolve_users(records: list, id_upload: int) -> tuple[list, list]:
+    """
+    Returns
+    -------
+    resolved : list record dengan id_user valid
+    rejected : list dict invalid (nomor_baris, keterangan, data_mentah)
+    """
+    if not records:
+        return [], []
 
-
-def resolve_users(records: list, id_upload: int) -> list:
     conn = pymysql.connect(**DB_CONFIG)
     cursor = conn.cursor()
 
-    unresolved = [r for r in records if r.get('id_user') == 0]
-    if not unresolved:
-        conn.close()
-        return records
-
-    # Ambil unique email yang perlu di-resolve
-    email_set = set()
-    for r in unresolved:
-        email = r.get('email', '').strip().lower()
-        if email:
-            email_set.add(email)
-
-    if not email_set:
-        # Tidak ada email — fallback ke user ID 1
-        for r in unresolved:
-            r['id_user'] = 1
-        conn.close()
-        return records
-
-    # Cari user yang sudah ada berdasarkan email
-    placeholders = ','.join(['%s'] * len(email_set))
     cursor.execute(
-        f"SELECT id_user, email FROM users WHERE email IN ({placeholders})",
-        list(email_set)
+        "SELECT id_user, email FROM users WHERE status = 'aktif' AND role = 'pelanggan'"
     )
-    existing = {row[1].lower(): row[0] for row in cursor.fetchall()}
-
-    email_created = {}
-    for email in email_set:
-        if email in existing:
-            email_created[email] = existing[email]
-            print(f"  [USER] {email} -> id_user={existing[email]} (existing)")
-        else:
-            # Buat user baru
-            nama = email.split('@')[0].replace('.', ' ').title()
-            if not nama:
-                nama = "Pelanggan Baru"
-            hp = ''
-            for r in unresolved:
-                if r.get('email', '').strip().lower() == email and r.get('no_hp'):
-                    hp = r['no_hp']
-                    break
-
-            hashed = _hash_password(DEFAULT_PASSWORD)
-            cursor.execute(
-                "INSERT INTO users (nama, email, no_hp, password, role, status) VALUES (%s, %s, %s, %s, 'pelanggan', 'aktif')",
-                (nama, email, hp, hashed)
-            )
-            new_id = cursor.lastrowid
-            conn.commit()
-            email_created[email] = new_id
-            print(f"  [USER] CREATE {email} -> id_user={new_id} (new, pass={DEFAULT_PASSWORD})")
-
-    # Update records
-    for r in unresolved:
-        email = r.get('email', '').strip().lower()
-        if email and email in email_created:
-            r['id_user'] = email_created[email]
-        elif not email:
-            r['id_user'] = 1
-
-    conn.commit()
+    rows = cursor.fetchall()
     conn.close()
-    return records
+
+    by_id = {int(r[0]): (r[1] or '').lower() for r in rows}
+    by_email = {email: uid for uid, email in by_id.items() if email}
+
+    resolved = []
+    rejected = []
+
+    for r in records:
+        uid = int(r.get('id_user') or 0)
+        email = (r.get('email') or '').strip().lower()
+
+        if uid > 0 and uid in by_id:
+            r['id_user'] = uid
+            resolved.append(r)
+            continue
+
+        if email:
+            if not EMAIL_RE.match(email):
+                rejected.append({
+                    'nomor_baris': r.get('nomor_baris'),
+                    'status_baris': 'invalid',
+                    'data_mentah': str(r),
+                    'keterangan': f"format email tidak valid: '{email}'",
+                })
+                continue
+            if email in by_email:
+                r['id_user'] = by_email[email]
+                resolved.append(r)
+                continue
+            rejected.append({
+                'nomor_baris': r.get('nomor_baris'),
+                'status_baris': 'invalid',
+                'data_mentah': str(r),
+                'keterangan': f"email '{email}' tidak cocok dengan akun pelanggan aktif",
+            })
+            continue
+
+        rejected.append({
+            'nomor_baris': r.get('nomor_baris'),
+            'status_baris': 'invalid',
+            'data_mentah': str(r),
+            'keterangan': 'pelanggan tidak dapat dicocokkan: butuh id_user aktif atau email akun yang sudah ada',
+        })
+
+    print(f"  [USER] resolved={len(resolved)} rejected={len(rejected)}")
+    return resolved, rejected

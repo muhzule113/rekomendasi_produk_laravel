@@ -3,17 +3,18 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-80}:80"
+      - "${APP_PORT:-5002}:80"
     volumes:
-      - storage_data:/var/www/html/storage/app
+      - ./storage/app:/var/www/html/storage/app
     env_file: .env
     environment:
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-rekomendasi}
-      DB_USERNAME: ${DB_USERNAME:-rekomendasi}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_DATABASE: db_sinar_manis
+      DB_USERNAME: root
+      DB_PASSWORD: root123
+      APP_KEY: base64:soRfK2CQihZMkUBnMjL0JILQd+bsULcetA91bca1zVk=
     depends_on:
       mysql:
         condition: service_healthy
@@ -23,15 +24,16 @@ services:
     restart: unless-stopped
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     volumes:
-      - storage_data:/var/www/html/storage/app
+      - ./storage/app:/var/www/html/storage/app
     env_file: .env
     environment:
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-rekomendasi}
-      DB_USERNAME: ${DB_USERNAME:-rekomendasi}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_DATABASE: db_sinar_manis
+      DB_USERNAME: root
+      DB_PASSWORD: root123
+      APP_KEY: base64:soRfK2CQihZMkUBnMjL0JILQd+bsULcetA91bca1zVk=
     depends_on:
       mysql:
         condition: service_healthy
@@ -42,18 +44,16 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-rekomendasi}
-      MYSQL_USER: ${DB_USERNAME:-rekomendasi}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MYSQL_DATABASE: db_sinar_manis
+      MYSQL_ROOT_PASSWORD: root123
     volumes:
-      - mysql_data:/var/lib/mysql
+      - rekomendasi-produk_db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-rootsecret}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot123"]
       interval: 5s
       timeout: 5s
       retries: 20
 
 volumes:
-  mysql_data:
-  storage_data:
+  rekomendasi-produk_db_data:
+    external: true

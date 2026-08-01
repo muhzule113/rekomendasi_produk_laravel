@@ -2,7 +2,7 @@
 
 Aplikasi toko online kebutuhan sehari-hari dengan modul **rekomendasi produk berbasis Item-Based Collaborative Filtering**. Sistem mempelajari pola pembelian pelanggan dari data transaksi, menghitung kemiripan antarproduk (cosine similarity), lalu menyarankan produk yang relevan.
 
-> Studi kasus: *Pengembangan Sistem Rekomendasi Produk Berbasis Analisis Big Data terhadap Transaksi Pelanggan — Toko Sinar Manis.*
+> Studi kasus: *Pengembangan Sistem Rekomendasi Produk Berdasarkan Data Transaksi Pelanggan menggunakan Item-Based Collaborative Filtering dan Cosine Similarity — Toko Sinar Manis.*
 
 ---
 
@@ -33,7 +33,7 @@ Aplikasi toko online kebutuhan sehari-hari dengan modul **rekomendasi produk ber
 | Pembayaran | Midtrans Snap (`midtrans/midtrans-php`) |
 | Database | MySQL (disarankan) / SQLite untuk development Laravel |
 | Frontend | Blade, Vite, Tailwind CSS |
-| Pipeline data | Python 3 (pandas, numpy, scikit-learn, pymysql) |
+| Pipeline data | Python 3 (pandas, NumPy, PyMySQL, SQLAlchemy, openpyxl) |
 | Deploy VPS | Docker Compose (PHP + Nginx + MySQL + Python venv) |
 
 ---
@@ -52,7 +52,7 @@ app/
 database/migrations/         # Skema domain utama
 python/
   pipeline/                  # ETL: ingest → clean → load
-  cf/                        # CF engine (scikit-learn)
+  cf/                        # CF engine (cosine biner, NumPy/pandas)
 resources/views/customer/    # Tampilan toko
 resources/views/admin/       # Panel admin
 routes/web.php
@@ -280,15 +280,15 @@ Inti logika ada di `App\Services\RecommenderService`.
 
 ```mermaid
 flowchart TD
-    A[Transaksi Selesai + Dibayar] --> B[User-Item Matrix]
-    B --> C[Cosine Similarity antar produk]
+    A[Transaksi Selesai + Dibayar] --> B[User-Item Matrix biner]
+    B --> C[Cosine Similarity]
     C --> D[(product_similarity)]
-    E[Riwayat beli user] --> F[Ambil tetangga produk]
+    E[Riwayat beli valid user] --> F[Agregasi tetangga]
     D --> F
-    F --> G[Hybrid scoring + rating]
-    G --> H[Daftar rekomendasi]
+    F --> G[prediction_score = sum sim / jumlah riwayat]
+    G --> H[Daftar rekomendasi IBCF]
     H --> I{Hasil kosong?}
-    I -->|Ya| J[Fallback: Beli Lagi / Best Seller / Tersedia]
+    I -->|Ya| J[Fallback berlabel: Beli Lagi / Popular / Tersedia]
     I -->|Tidak| K[Tampilkan ke pelanggan]
 ```
 
@@ -301,86 +301,85 @@ Method: `buildUserItemMatrix()`
 - Nilai: **binary** (1 = pernah membeli produk, 0 = belum)
 - Kolom: hanya produk berstatus `aktif`
 
-Hasilnya matriks `user × product`.
-
 ### 2. Cosine Similarity & Co-occurrence
 
-Method: `calculateCosineSimilarity()`
+Method: `calculateCosineSimilarity()` / Python `compute_cosine_similarity()`
 
-Setiap produk digambarkan sebagai vektor pembelian user. Untuk pasangan produk \(A\) dan \(B\):
+Untuk vektor interaksi biner:
 
-\[
-\text{similarity}(A,B) = \frac{A \cdot B}{\|A\| \,\|B\|}
-\]
+```text
+cosine(A, B) = |buyers(A) ∩ buyers(B)| / sqrt(|buyers(A)| × |buyers(B)|)
+```
 
-- **Co-occurrence**: jumlah user yang membeli keduanya
-- Hanya pasangan dengan `similarity > 0` yang disimpan
+- Skor cosine asli pada rentang 0–1 (**tanpa** normalisasi terhadap skor maksimum katalog)
+- Pasangan dengan skor 0 atau diagonal tidak disimpan
+- Ambang `CF_MIN_CO_OCCURRENCE` (default `2`) memfilter co-occurrence rendah
+- Rating, harga, stok, dan popularitas **tidak** masuk perhitungan skor CF
 
 ### 3. Menyimpan hasil ke database
 
 Method: `saveSimilarity()`
 
-- Menghapus isi lama tabel `product_similarity`
-- Menyimpan pasangan **dua arah** (`product_a` ↔ `product_b`) beserta `score` dan `co_occurrence`
+- Penggantian tabel secara atomik (transaksi DB); gagal → rollback, data lama utuh
+- Pasangan disimpan dua arah (`product_a` ↔ `product_b`)
+- Sukses menghitung → `recommendation_dirty = 0`
 
-### 4. Memberi rekomendasi ke pelanggan
+### 4. Skor prediksi rekomendasi personal
 
-Method: `recommendForCustomer()` → dipanggil dari `getFullRecommendation()`
+Method: `recommendForCustomer()`
 
-1. Ambil produk yang pernah dibeli user
-2. Cari produk mirip lewat `product_similarity`
-3. Kecualikan: produk sudah dibeli + produk rating rendah (rata-rata ≤ 2.0 dengan ≥ 2 ulasan)
-4. Hanya produk `aktif` dan `stok > 0`
-5. Alasan contoh: *"Sering dibeli bersama Indomie Goreng"*
+1. Ambil seluruh produk valid yang pernah dibeli user
+2. Kumpulkan seluruh tetangga dari `product_similarity`
+3. Kecualikan produk yang sudah dibeli
+4. Agregasi per kandidat **sebelum** limit:
 
-### 5. Hybrid scoring (similarity + rating)
-
-Method: `applyHybridScoring()`
-
-```
-hybrid = (similarity × 0.7) + (avg_rating / 5 × 0.3)
-+ 0.1  jika avg_rating ≥ 4.0 dan jumlah ulasan ≥ 2
+```text
+prediction_score(user, candidate)
+  = sum(similarity(purchased_item, candidate))
+    / jumlah_produk_valid_yang_pernah_dibeli_user
 ```
 
-Hasil diurutkan berdasarkan `hybrid_score` tertinggi.
+5. Urutkan `prediction_score` menurun; tie-breaker: co-occurrence, lalu `id_product`
+6. Filter kelayakan tampil: `status = aktif` dan `stok > 0`
+7. Alasan contoh: *"Direkomendasikan berdasarkan kemiripan pola pembelian dengan Indomie Goreng."*
 
-### 6. Cold start & fallback
+Rating boleh ditampilkan di kartu produk, tetapi **tidak** memengaruhi skor/filter IBCF.
 
-Method: `getFullRecommendation()` — cascade:
+### 5. Cold start & fallback (bukan CF)
 
-| Kondisi | Metode | Sumber |
-|---------|--------|--------|
-| Belum ada riwayat beli | Rating Tertinggi (Cold Start) | Best seller + rating |
-| Ada riwayat + CF berhasil | Item-Based CF + Hybrid Rating | `product_similarity` |
-| CF kosong | Beli Lagi | Produk pernah dibeli (stok tersedia) |
-| Masih kosong | Best Seller + Rating | Skor: rating 60% + terjual 40% |
-| Terakhir | Produk Tersedia | Produk aktif berstok |
+| Kondisi | Method label | Log source |
+|---------|--------------|------------|
+| Belum ada riwayat valid | Cold Start - Popularitas/Rating (bukan CF) | `cold_start_popular` |
+| Ada riwayat + IBCF berhasil | Item-Based CF - Cosine Similarity | `ibcf_cosine` |
+| IBCF kosong | Beli Lagi (Fallback, bukan CF) | `buy_again` |
+| Masih kosong | Cold Start / Produk Tersedia (bukan CF) | `cold_start_popular` / `available_fallback` |
 
-Skor best seller:
+### 6. Evaluasi akademik
 
-```
-(avg_rating / 5 × 0.6) + (terjual / max_terjual × 0.4)
-```
+Python `cf/evaluator.py` memakai holdout berbasis waktu per pelanggan, membangun ulang similarity **hanya dari data latih** (tanpa membaca tabel similarity produksi), lalu menghitung Precision@K, Recall@K, F1@K, Hit Rate@K, dan Catalog Coverage@K (K=5 dan 10). Hasil disimpan di `evaluation_logs`.
+
+- **Pair coverage**: % pasangan produk yang punya kemiripan di model
+- **Catalog coverage@K**: % katalog yang muncul di Top-K evaluasi
 
 ### 7. Kapan similarity dihitung ulang?
 
 | Pemicu | Cara |
 |--------|------|
-| Tombol **Hitung Ulang** di Admin → Analisis | `POST /admin/similarity` → `RecommenderService` (PHP) |
-| Upload file transaksi | Pipeline Python → `cf_engine.py` (scikit-learn) |
+| Tombol **Hitung Ulang** di Admin → Analisis | `POST /admin/similarity` → PHP `RecommenderService` |
+| Upload file transaksi | Pipeline Python → `cf_engine.py` (cosine biner yang sama) |
 
-Setelah pembayaran Midtrans sukses (atau admin menandai transaksi selesai/dibayar), sistem menandai `recommendation_dirty` di `system_settings`. Flag ini menandakan data CF sudah usang; perhitungan ulang tetap dijalankan lewat **Hitung Ulang** atau **upload pipeline**.
+Flag `recommendation_dirty` diset saat transaksi valid berubah, ditampilkan di Admin → Analisis, dan dibersihkan hanya setelah kalkulasi berhasil.
 
 ### 8. PHP vs Python CF
 
-| Aspek | PHP (`RecommenderService`) | Python (`cf_engine`) |
-|-------|---------------------------|----------------------|
-| Filter transaksi | Selesai + Dibayar | Selesai |
-| Representasi | Binary (0/1) | Quantity (+ scaling) |
-| Library | Implementasi manual | scikit-learn cosine |
-| Digunakan saat | Hitung ulang dari admin | Setelah upload data |
+Kedua mesin memakai rumus, filter transaksi, ambang co-occurrence, dan matriks biner yang sama (toleransi skor `1e-6`).
 
-Keduanya menulis ke tabel `product_similarity` yang sama, yang dibaca halaman rekomendasi.
+| Aspek | PHP | Python |
+|-------|-----|--------|
+| Filter | Selesai + Dibayar | Selesai + Dibayar |
+| Representasi | Binary | Binary |
+| Rumus | Cosine manual | Cosine NumPy |
+| Pemicu | Admin Hitung Ulang | Setelah upload / batch |
 
 ### 9. Endpoint terkait rekomendasi
 
@@ -390,6 +389,7 @@ Keduanya menulis ke tabel `product_similarity` yang sama, yang dibaca halaman re
 | `GET /produk/{id}` | Detail + produk serupa |
 | `POST /admin/similarity` | Hitung ulang cosine similarity (admin) |
 | `GET /api/rekomendasi` | API: `similar` / `personal` / `popular` |
+| `POST /api/review` | Ulasan produk (session web, role pelanggan) |
 
 ---
 
@@ -408,11 +408,21 @@ Di lingkungan lokal, pastikan webhook dapat dijangkau Midtrans (ngrok/domain pub
 
 ## Akun & data awal
 
-Seeder bawaan Laravel belum disesuaikan dengan skema `users` aplikasi (`nama`, `role`, dll.). Buat akun admin/pelanggan secara manual di database atau lewat form register (pelanggan).
+Kredensial admin **tidak** di-hardcode di repository. Buat admin development dari environment:
 
-Contoh role di tabel `users`:
-- `role = admin`
-- `role = pelanggan`
+```bash
+# isi di .env: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME
+php artisan app:create-admin
+```
+
+Pelanggan dapat mendaftar lewat form register. Role di tabel `users`: `admin` | `pelanggan`.
+
+## Pengujian
+
+```bash
+php artisan test
+py -3 -m unittest discover -s python/tests -v
+```
 
 ---
 
