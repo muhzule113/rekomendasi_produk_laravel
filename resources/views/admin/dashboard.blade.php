@@ -91,14 +91,14 @@
                 <div>
                     <div class="applify-stat-title">Total Produk</div>
                     <div class="applify-stat-value">{{ number_format($totalProducts) }}</div>
-                    <div style="font-size: 0.75rem; color: #10b981; font-weight: 600; margin-top: 8px;"><i class="fa-solid fa-arrow-trend-up"></i> +12% Inc</div>
+                    <div style="font-size: 0.75rem; color: {{ $dashboardTrends['products']['color'] }}; font-weight: 600; margin-top: 8px;"><i class="fa-solid {{ $dashboardTrends['products']['icon'] }}"></i> {{ $dashboardTrends['products']['display'] }} {{ $dashboardTrends['products']['label'] }}</div>
                 </div>
                 <div class="circular-progress">
                     <svg viewBox="0 0 36 36">
                         <path class="bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="progress" stroke="var(--color-navy)" stroke-dasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="progress" stroke="{{ $dashboardTrends['products']['color'] }}" stroke-dasharray="{{ $dashboardTrends['products']['progress'] }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                     </svg>
-                    <div class="text" style="color: var(--color-navy)">85%</div>
+                    <div class="text" style="color: {{ $dashboardTrends['products']['color'] }}">{{ $dashboardTrends['products']['circle_display'] }}</div>
                 </div>
             </div>
 
@@ -106,14 +106,14 @@
                 <div>
                     <div class="applify-stat-title">Total Pelanggan</div>
                     <div class="applify-stat-value">{{ number_format($totalCustomers) }}</div>
-                    <div style="font-size: 0.75rem; color: var(--color-gold); font-weight: 600; margin-top: 8px;"><i class="fa-solid fa-arrow-trend-up"></i> +06% Inc</div>
+                    <div style="font-size: 0.75rem; color: {{ $dashboardTrends['customers']['color'] }}; font-weight: 600; margin-top: 8px;"><i class="fa-solid {{ $dashboardTrends['customers']['icon'] }}"></i> {{ $dashboardTrends['customers']['display'] }} {{ $dashboardTrends['customers']['label'] }}</div>
                 </div>
                 <div class="circular-progress">
                     <svg viewBox="0 0 36 36">
                         <path class="bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="progress" stroke="var(--color-gold)" stroke-dasharray="60, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="progress" stroke="{{ $dashboardTrends['customers']['color'] }}" stroke-dasharray="{{ $dashboardTrends['customers']['progress'] }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                     </svg>
-                    <div class="text" style="color: var(--color-gold)">60%</div>
+                    <div class="text" style="color: {{ $dashboardTrends['customers']['color'] }}">{{ $dashboardTrends['customers']['circle_display'] }}</div>
                 </div>
             </div>
 
@@ -136,14 +136,14 @@
                 <div>
                     <div class="applify-stat-title">Pendapatan</div>
                     <div class="applify-stat-value" style="font-size: 1.3rem; padding-top: 4px;">{{ \App\Helpers\Helpers::formatRupiah($totalRevenue ?? 0) }}</div>
-                    <div style="font-size: 0.75rem; color: #ef4444; font-weight: 600; margin-top: 8px;"><i class="fa-solid fa-arrow-trend-down"></i> -02% Dec</div>
+                    <div style="font-size: 0.75rem; color: {{ $dashboardTrends['revenue']['color'] }}; font-weight: 600; margin-top: 8px;"><i class="fa-solid {{ $dashboardTrends['revenue']['icon'] }}"></i> {{ $dashboardTrends['revenue']['display'] }} {{ $dashboardTrends['revenue']['label'] }}</div>
                 </div>
                 <div class="circular-progress">
                     <svg viewBox="0 0 36 36">
                         <path class="bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="progress" stroke="#ef4444" stroke-dasharray="45, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="progress" stroke="{{ $dashboardTrends['revenue']['color'] }}" stroke-dasharray="{{ $dashboardTrends['revenue']['progress'] }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                     </svg>
-                    <div class="text" style="color: #ef4444">45%</div>
+                    <div class="text" style="color: {{ $dashboardTrends['revenue']['color'] }}">{{ $dashboardTrends['revenue']['circle_display'] }}</div>
                 </div>
             </div>
         </div>

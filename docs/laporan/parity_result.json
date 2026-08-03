@@ -1,0 +1,135 @@
+{
+  "tolerance": 1e-06,
+  "php": {
+    "pair_count": 18286,
+    "min_co_occurrence": 2,
+    "stats": {
+      "total_users": 799,
+      "total_products_in_matrix": 199,
+      "expected_pairs": 19701,
+      "saved_pairs": 18286,
+      "coverage_percentage": 92.82,
+      "max_score": 0.235702,
+      "min_score": 0.027217,
+      "avg_score": 0.077318,
+      "min_co_occurrence": 2
+    }
+  },
+  "python": {
+    "pair_count": 18286,
+    "min_co_occurrence": 2,
+    "stats": {
+      "total_products_in_matrix": 199,
+      "total_users": 799
+    }
+  },
+  "score_comparison": {
+    "common_pairs": 18286,
+    "only_php": 0,
+    "only_py": 0,
+    "only_php_sample": [],
+    "only_py_sample": [],
+    "max_abs_delta": 0.0,
+    "worst_pair": null,
+    "mean_abs_delta": 0.0,
+    "score_pass": true
+  },
+  "topk_comparison": [
+    {
+      "id_user": 5246,
+      "bought_count": 18,
+      "top_php": [
+        195,
+        131,
+        166,
+        125,
+        161
+      ],
+      "top_py": [
+        195,
+        131,
+        166,
+        125,
+        161
+      ],
+      "same": true
+    },
+    {
+      "id_user": 5247,
+      "bought_count": 13,
+      "top_php": [
+        190,
+        157,
+        175,
+        142,
+        69
+      ],
+      "top_py": [
+        190,
+        157,
+        175,
+        142,
+        69
+      ],
+      "same": true
+    },
+    {
+      "id_user": 5248,
+      "bought_count": 18,
+      "top_php": [
+        169,
+        98,
+        3,
+        147,
+        75
+      ],
+      "top_py": [
+        169,
+        98,
+        3,
+        147,
+        75
+      ],
+      "same": true
+    },
+    {
+      "id_user": 5249,
+      "bought_count": 13,
+      "top_php": [
+        105,
+        79,
+        175,
+        111,
+        157
+      ],
+      "top_py": [
+        105,
+        79,
+        175,
+        111,
+        157
+      ],
+      "same": true
+    },
+    {
+      "id_user": 5250,
+      "bought_count": 12,
+      "top_php": [
+        52,
+        123,
+        58,
+        175,
+        3
+      ],
+      "top_py": [
+        52,
+        123,
+        58,
+        175,
+        3
+      ],
+      "same": true
+    }
+  ],
+  "overall_pass": true
+}

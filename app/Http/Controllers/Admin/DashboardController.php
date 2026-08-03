@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -14,6 +13,31 @@ class DashboardController extends Controller
         $totalCustomers   = DB::table('users')->where('role', 'pelanggan')->count();
         $totalTransactions = DB::table('transactions')->count();
         $totalRevenue = DB::table('transactions')->where('status_pembayaran', 'Dibayar')->sum('total');
+        $startOfMonth = now()->startOfMonth();
+        $startOfLastMonth = now()->subMonthNoOverflow()->startOfMonth();
+
+        $previousTotalProducts = DB::table('products')
+            ->where('created_at', '<', $startOfMonth)
+            ->count();
+        $previousTotalCustomers = DB::table('users')
+            ->where('role', 'pelanggan')
+            ->where('created_at', '<', $startOfMonth)
+            ->count();
+        $currentMonthRevenue = DB::table('transactions')
+            ->where('status_pembayaran', 'Dibayar')
+            ->where('tanggal', '>=', $startOfMonth)
+            ->sum('total');
+        $lastMonthRevenue = DB::table('transactions')
+            ->where('status_pembayaran', 'Dibayar')
+            ->where('tanggal', '>=', $startOfLastMonth)
+            ->where('tanggal', '<', $startOfMonth)
+            ->sum('total');
+
+        $dashboardTrends = [
+            'products' => $this->buildTrend($totalProducts, $previousTotalProducts),
+            'customers' => $this->buildTrend($totalCustomers, $previousTotalCustomers),
+            'revenue' => $this->buildTrend((float) $currentMonthRevenue, (float) $lastMonthRevenue),
+        ];
 
         $transaksiBulanIni = DB::table('transactions')
             ->whereRaw('MONTH(tanggal) = MONTH(CURRENT_DATE())')
@@ -72,7 +96,38 @@ class DashboardController extends Controller
             'monthlyRevenue',
             'kategoriPopuler',
             'recentTransactions',
-            'user'
+            'user',
+            'dashboardTrends'
         ));
+    }
+
+    private function buildTrend(float $current, float $previous): array
+    {
+        if ($previous == 0.0) {
+            $percentage = $current > 0.0 ? 100.0 : 0.0;
+        } else {
+            $percentage = (($current - $previous) / abs($previous)) * 100;
+        }
+
+        $direction = $percentage < 0 ? 'down' : ($percentage > 0 ? 'up' : 'flat');
+        $colors = [
+            'up' => '#10b981',
+            'down' => '#ef4444',
+            'flat' => '#64748b',
+        ];
+
+        $roundedPercentage = round($percentage, 1);
+        $progress = round(min(abs($percentage), 100), 1);
+
+        return [
+            'percentage' => $roundedPercentage,
+            'display' => ($percentage > 0 ? '+' : '') . number_format($roundedPercentage, 1) . '%',
+            'circle_display' => number_format($progress, 0) . '%',
+            'direction' => $direction,
+            'label' => $direction === 'down' ? 'Turun' : ($direction === 'up' ? 'Naik' : 'Tetap'),
+            'icon' => $direction === 'down' ? 'fa-arrow-trend-down' : ($direction === 'up' ? 'fa-arrow-trend-up' : 'fa-minus'),
+            'color' => $colors[$direction],
+            'progress' => $progress,
+        ];
     }
 }

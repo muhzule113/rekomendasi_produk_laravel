@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 DB_CONFIG = {
     'host':     os.getenv('DB_HOST', 'localhost'),
@@ -14,7 +18,6 @@ CF_CONFIG = {
     'batch_size': 1000,
 }
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_RAW_DIR = os.path.join(BASE_DIR, 'storage', 'app', 'uploads', 'raw')
 UPLOAD_DONE_DIR = os.path.join(BASE_DIR, 'storage', 'app', 'uploads', 'processed')
 UPLOAD_REJ_DIR = os.path.join(BASE_DIR, 'storage', 'app', 'uploads', 'rejected')
