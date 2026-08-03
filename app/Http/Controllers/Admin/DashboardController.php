@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $totalProducts    = DB::table('products')->count();
-        $totalCustomers   = DB::table('users')->where('role', 'pelanggan')->count();
+        $totalProducts = DB::table('products')->count();
+        $totalCustomers = DB::table('users')->where('role', 'pelanggan')->count();
         $totalTransactions = DB::table('transactions')->count();
         $totalRevenue = DB::table('transactions')->where('status_pembayaran', 'Dibayar')->sum('total');
         $startOfMonth = now()->startOfMonth();
@@ -40,31 +41,44 @@ class DashboardController extends Controller
         ];
 
         $transaksiBulanIni = DB::table('transactions')
-            ->whereRaw('MONTH(tanggal) = MONTH(CURRENT_DATE())')
-            ->whereRaw('YEAR(tanggal) = YEAR(CURRENT_DATE())')
+            ->whereBetween('tanggal', [now()->startOfMonth(), now()->endOfMonth()])
             ->count();
 
-        // Monthly chart data (6 months)
-        $monthlyTransactions = DB::table('transactions')
-            ->selectRaw('YEAR(tanggal) as year, MONTH(tanggal) as month, COUNT(*) as count')
-            ->where('tanggal', '>=', now()->subMonths(6))
-            ->groupBy('year', 'month')
-            ->orderBy('year')
-            ->orderBy('month')
-            ->get()
-            ->map(function ($row) {
-                $row->month_name = date('M', mktime(0, 0, 0, $row->month, 10));
-                return $row;
-            });
+        // Anchor the chart to the latest available transaction so imported/historical
+        // datasets remain visible even when they do not contain current-month data.
+        $latestTransactionDate = DB::table('transactions')->max('tanggal');
+        $chartEndMonth = $latestTransactionDate
+            ? Carbon::parse($latestTransactionDate)->startOfMonth()
+            : now()->startOfMonth();
+        $chartStartMonth = $chartEndMonth->copy()->subMonths(5);
 
-        $monthlyRevenue = DB::table('transactions')
-            ->selectRaw('YEAR(tanggal) as year, MONTH(tanggal) as month, SUM(total) as total')
-            ->where('status_pembayaran', 'Dibayar')
-            ->where('tanggal', '>=', now()->subMonths(6))
-            ->groupBy('year', 'month')
-            ->orderBy('year')
-            ->orderBy('month')
-            ->get();
+        $monthlyTransactions = collect(range(0, 5))->map(function (int $offset) use ($chartStartMonth) {
+            $month = $chartStartMonth->copy()->addMonths($offset);
+            $stats = DB::table('transactions')
+                ->whereBetween('tanggal', [
+                    $month->copy()->startOfMonth(),
+                    $month->copy()->endOfMonth(),
+                ])
+                ->selectRaw(
+                    'COUNT(*) as count, COALESCE(SUM(CASE WHEN status_pembayaran = ? THEN total ELSE 0 END), 0) as total',
+                    ['Dibayar']
+                )
+                ->first();
+
+            return (object) [
+                'year' => $month->year,
+                'month' => $month->month,
+                'month_name' => $month->format('M'),
+                'count' => (int) $stats->count,
+                'total' => (float) $stats->total,
+            ];
+        });
+
+        $monthlyRevenue = $monthlyTransactions->map(fn ($month) => (object) [
+            'year' => $month->year,
+            'month' => $month->month,
+            'total' => $month->total,
+        ]);
 
         // Category popularity
         $kategoriPopuler = DB::table('transaction_items')
@@ -121,8 +135,8 @@ class DashboardController extends Controller
 
         return [
             'percentage' => $roundedPercentage,
-            'display' => ($percentage > 0 ? '+' : '') . number_format($roundedPercentage, 1) . '%',
-            'circle_display' => number_format($progress, 0) . '%',
+            'display' => ($percentage > 0 ? '+' : '').number_format($roundedPercentage, 1).'%',
+            'circle_display' => number_format($progress, 0).'%',
             'direction' => $direction,
             'label' => $direction === 'down' ? 'Turun' : ($direction === 'up' ? 'Naik' : 'Tetap'),
             'icon' => $direction === 'down' ? 'fa-arrow-trend-down' : ($direction === 'up' ? 'fa-arrow-trend-up' : 'fa-minus'),
