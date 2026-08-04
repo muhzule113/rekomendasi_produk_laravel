@@ -10,6 +10,7 @@ Route::get('/produk/{id}', [\App\Http\Controllers\Api\ProdukController::class, '
 Route::get('/rekomendasi', [\App\Http\Controllers\Api\RekomendasiController::class, 'index']);
 
 // Cart routes — moved to web.php for session access
+// Review route — defined in web.php (session-based auth) to avoid duplicate route clash
 
 // Protected routes
 Route::middleware('auth')->group(function () {
