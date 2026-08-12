@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProdukController extends Controller
 {
@@ -27,48 +29,45 @@ class ProdukController extends Controller
 
         $products = $query->orderByDesc('p.id_product')->paginate(10)->appends($request->all());
         $currentPage = $products->currentPage();
-        $totalPages  = $products->lastPage();
-        $categories  = DB::table('categories')->get();
+        $totalPages = $products->lastPage();
+        $categories = DB::table('categories')->get();
 
         return view('admin.produk', compact('products', 'currentPage', 'totalPages', 'categories'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'foto' => 'nullable|image|max:2048',
-        ]);
+        $validated = $request->validate($this->productRules($request));
 
         $data = [
-            'nama_product' => $request->input('nama_product'),
-            'id_category'  => $request->input('id_category'),
-            'harga'        => $request->input('harga'),
-            'stok'         => $request->input('stok'),
-            'deskripsi'    => $request->input('deskripsi'),
+            'nama_product' => $validated['nama_product'],
+            'harga' => $validated['harga'],
+            'stok' => $validated['stok'],
+            'deskripsi' => $validated['deskripsi'] ?? null,
         ];
 
         if ($request->hasFile('foto')) {
             $data['foto'] = $request->file('foto')->store('products', 'public');
         }
 
-        DB::table('products')->insert($data);
+        DB::transaction(function () use (&$data, $validated): void {
+            $data['id_category'] = $this->resolveCategoryId($validated);
+            DB::table('products')->insert($data);
+        });
 
         return redirect()->route('admin.produk')->with('success', 'Produk berhasil ditambahkan.');
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'foto' => 'nullable|image|max:2048',
-        ]);
+        $validated = $request->validate($this->productRules($request, true));
 
         $data = [
-            'nama_product' => $request->input('nama_product'),
-            'id_category'  => $request->input('id_category'),
-            'harga'        => $request->input('harga'),
-            'stok'         => $request->input('stok'),
-            'deskripsi'    => $request->input('deskripsi'),
-            'status'       => $request->input('status'),
+            'nama_product' => $validated['nama_product'],
+            'harga' => $validated['harga'],
+            'stok' => $validated['stok'],
+            'deskripsi' => $validated['deskripsi'] ?? null,
+            'status' => $validated['status'],
         ];
 
         if ($request->hasFile('foto')) {
@@ -79,7 +78,10 @@ class ProdukController extends Controller
             $data['foto'] = $request->file('foto')->store('products', 'public');
         }
 
-        DB::table('products')->where('id_product', $id)->update($data);
+        DB::transaction(function () use (&$data, $validated, $id): void {
+            $data['id_category'] = $this->resolveCategoryId($validated);
+            DB::table('products')->where('id_product', $id)->update($data);
+        });
 
         return redirect()->route('admin.produk')->with('success', 'Produk berhasil diupdate.');
     }
@@ -92,6 +94,7 @@ class ProdukController extends Controller
             if ($foto) {
                 Storage::disk('public')->delete($foto);
             }
+
             return redirect()->route('admin.produk')->with('success', 'Produk berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->route('admin.produk')->with('error', 'Produk tidak bisa dihapus karena sudah ada di riwayat transaksi.');
@@ -124,5 +127,44 @@ class ProdukController extends Controller
                     : "{$deleted} produk berhasil dihapus.")
                 : 'Produk tidak bisa dihapus karena sudah ada di riwayat transaksi.'
         );
+    }
+
+    private function productRules(Request $request, bool $updating = false): array
+    {
+        return [
+            'nama_product' => ['required', 'string', 'max:150'],
+            'id_category' => [
+                'required',
+                Rule::when(
+                    $request->input('id_category') === '__new__',
+                    ['in:__new__'],
+                    ['integer', 'exists:categories,id_category']
+                ),
+            ],
+            'new_category_name' => ['nullable', 'required_if:id_category,__new__', 'string', 'max:100'],
+            'harga' => ['required', 'numeric', 'min:0'],
+            'stok' => ['required', 'integer', 'min:0'],
+            'foto' => ['nullable', 'image', 'max:2048'],
+            'deskripsi' => ['nullable', 'string'],
+            'status' => [$updating ? 'required' : 'nullable', Rule::in(['aktif', 'nonaktif'])],
+        ];
+    }
+
+    private function resolveCategoryId(array $validated): int
+    {
+        if ($validated['id_category'] !== '__new__') {
+            return (int) $validated['id_category'];
+        }
+
+        $categoryName = trim($validated['new_category_name']);
+        $existingId = DB::table('categories')
+            ->whereRaw('LOWER(nama_category) = ?', [Str::lower($categoryName)])
+            ->value('id_category');
+
+        return $existingId
+            ? (int) $existingId
+            : (int) DB::table('categories')->insertGetId([
+                'nama_category' => $categoryName,
+            ], 'id_category');
     }
 }
