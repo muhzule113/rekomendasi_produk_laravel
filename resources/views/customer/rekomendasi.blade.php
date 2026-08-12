@@ -6,9 +6,12 @@
 
 @php
 $emojiMap = ['Sembako'=>'🛒','Makanan Instan'=>'🍜','Minuman'=>'🧃','Kebersihan'=>'🧼','Kebutuhan Mandi & Cuci'=>'🧴','default'=>'📦'];
-function getEmojiRec(string $cat, array $map): string { return $map[$cat] ?? $map['default']; }
+if (! function_exists('getEmojiRec')) {
+    function getEmojiRec(string $cat, array $map): string { return $map[$cat] ?? $map['default']; }
+}
 
 $isLoggedIn = Auth::check() && Auth::user()->role === 'pelanggan';
+$isVerifiedCustomer = $isVerifiedCustomer ?? false;
 @endphp
 
 <!-- Dark Header -->
@@ -33,22 +36,32 @@ $isLoggedIn = Auth::check() && Auth::user()->role === 'pelanggan';
         <!-- Section 1: Berdasarkan Transaksi Anda -->
         <div style="margin-bottom: 3rem;">
             <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-dark); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-user-check" style="color: var(--primary);"></i> Berdasarkan Transaksi Anda
+                <i class="fa-solid fa-user-check" style="color: var(--primary);"></i>
+                {{ $isVerifiedCustomer ? 'Rekomendasi Personal' : 'Rekomendasi Publik' }}
             </h2>
 
-            @if(!$isLoggedIn)
-            <!-- Alert: not logged in -->
+            @if(!$isVerifiedCustomer)
             <div class="alert-card mb-6">
                 <div class="alert-card-left">
                     <i class="fa-solid fa-sparkles alert-card-icon"></i>
                     <div>
-                        <div class="alert-card-title">Anda belum masuk</div>
-                        <div class="alert-card-desc">Silakan masuk untuk melihat rekomendasi yang dipersonalisasi khusus untuk Anda.</div>
+                        <div class="alert-card-title">{{ $isLoggedIn ? 'Email belum terverifikasi' : 'Anda belum masuk' }}</div>
+                        <div class="alert-card-desc">
+                            {{ $isLoggedIn
+                                ? 'Saat ini Anda melihat Rekomendasi Publik. Verifikasi email untuk membuka Rekomendasi Personal.'
+                                : 'Anda sedang melihat Rekomendasi Publik. Masuk dan verifikasi email untuk membuka Rekomendasi Personal.' }}
+                        </div>
                     </div>
                 </div>
-                <a href="{{ route('login') }}" class="btn btn-primary btn-md" style="white-space:nowrap;">Masuk untuk Rekomendasi Personal</a>
+                @if($isLoggedIn)
+                    <a href="{{ route('verification.notice') }}" class="btn btn-primary btn-md" style="white-space:nowrap;">Verifikasi Email</a>
+                @else
+                    <a href="{{ route('login') }}" class="btn btn-primary btn-md" style="white-space:nowrap;">Masuk</a>
+                @endif
             </div>
-            @elseif(empty($recommendations) || count($recommendations) === 0)
+            @endif
+
+            @if(empty($recommendations) || count($recommendations) === 0)
             <div class="alert-card mb-6" style="background: rgba(241,245,249,0.5); border-color: #e2e8f0; color: var(--text-muted);">
                 <div class="alert-card-left">
                     <i class="fa-solid fa-cart-arrow-down alert-card-icon" style="color: #94a3b8; background: white;"></i>

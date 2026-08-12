@@ -6,7 +6,9 @@
 
 @php
 $emojiMap = ['Sembako'=>'🛒','Makanan Instan'=>'🍜','Minuman'=>'🧃','Kebersihan'=>'🧼','Kebutuhan Mandi & Cuci'=>'🧴','default'=>'📦'];
-function getEmojiDetail(string $cat, array $map): string { return $map[$cat] ?? $map['default']; }
+if (! function_exists('getEmojiDetail')) {
+    function getEmojiDetail(string $cat, array $map): string { return $map[$cat] ?? $map['default']; }
+}
 
 $cart = session('cart', []);
 $cartQty = $cart[$product->id_product] ?? 0;
@@ -16,6 +18,7 @@ $isPelanggan = !Auth::check() || Auth::user()->role === 'pelanggan';
 @endphp
 
 @php
+if (! function_exists('starIconsDetail')) {
 function starIconsDetail(int $rating): string {
     $html = '';
     for ($i = 1; $i <= 5; $i++) {
@@ -24,6 +27,7 @@ function starIconsDetail(int $rating): string {
             : '<i class="fa-regular fa-star" style="color:#d1d5db;font-size:.8rem;"></i>';
     }
     return $html;
+}
 }
 @endphp
 
@@ -247,6 +251,11 @@ function starIconsDetail(int $rating): string {
                 </p>
             @elseif($userHasReviewed)
                 <p style="color:var(--muted-foreground);font-size:.875rem;">Terima kasih! Ulasan Anda sudah tercatat.</p>
+            @elseif(!Auth::user()->isPelangganTerverifikasi())
+                <p style="color:var(--muted-foreground);font-size:.875rem;">
+                    Verifikasi email Anda terlebih dahulu untuk memberikan ulasan.
+                    <a href="{{ route('verification.notice') }}" style="color:var(--primary);font-weight:600;">Verifikasi Email</a>
+                </p>
             @else
                 <div id="star-picker" style="margin-bottom:1rem;display:flex;gap:.3rem;">
                     @for($s = 1; $s <= 5; $s++)

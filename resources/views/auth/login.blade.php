@@ -46,6 +46,9 @@
         <div class="login-card">
             <h2 style="font-family: var(--font-display); font-weight: 700; color: var(--primary); font-size: 1.5rem; margin-bottom: 0.25rem;">Masuk</h2>
             <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-bottom: 2rem;">Pilih peran Anda lalu masukkan kredensial.</p>
+            <div style="background:#eff6ff;color:#1e3a8a;padding:.65rem .8rem;border-radius:.5rem;font-size:.8125rem;line-height:1.5;margin-bottom:1.25rem;">
+                Pelanggan yang baru mendaftar perlu memverifikasi email sebelum memakai fitur Pelanggan Terverifikasi.
+            </div>
 
             @if ($errors->any())
                 <div style="background: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; margin-bottom: 1.5rem;">

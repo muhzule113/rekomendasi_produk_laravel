@@ -6,7 +6,9 @@
 
 @php
 $emojiMap = ['Sembako'=>'🛒','Makanan Instan'=>'🍜','Minuman'=>'🧃','Kebersihan'=>'🧼','Kebutuhan Mandi & Cuci'=>'🧴','default'=>'📦'];
-function getEmojiCart(string $cat, array $map): string { return $map[$cat] ?? $map['default']; }
+if (! function_exists('getEmojiCart')) {
+    function getEmojiCart(string $cat, array $map): string { return $map[$cat] ?? $map['default']; }
+}
 @endphp
 
 <section class="page-header">

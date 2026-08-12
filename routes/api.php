@@ -12,7 +12,7 @@ Route::get('/rekomendasi', [\App\Http\Controllers\Api\RekomendasiController::cla
 // Cart routes — moved to web.php for session access
 
 // Protected routes
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/checkout', [\App\Http\Controllers\Api\CheckoutController::class, 'store']);
 });
 
