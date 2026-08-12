@@ -37,7 +37,7 @@
                     Buat akun pelanggan
                 </h1>
                 <p style="font-size: 0.8125rem; color: var(--muted-foreground); margin-top: 0.25rem;">
-                    Daftar untuk berbelanja dan menerima rekomendasi produk personal.
+                    Daftar untuk berbelanja. Setelah mendaftar, verifikasi email diperlukan untuk membuka fitur Pelanggan Terverifikasi dan Rekomendasi Personal.
                 </p>
             </div>
         </div>

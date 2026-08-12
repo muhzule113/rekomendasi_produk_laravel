@@ -221,6 +221,10 @@ PIPELINE_SCRIPT=python/pipeline/pipeline_runner.py
 **Notification URL Midtrans (production/ngrok):**  
 `https://domain-anda/api/midtrans/notification`
 
+### Verifikasi email dan queue
+
+Alur verifikasi email, konfigurasi SMTP generik, worker queue database, dan perintah deployment dijelaskan di [`docs/operations/email-verification-and-queue.md`](docs/operations/email-verification-and-queue.md). Minimal production perlu mengisi `APP_URL`, `MAIL_MAILER`, `MAIL_SCHEME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, dan `MAIL_FROM_NAME`. Jangan commit kredensial SMTP.
+
 ---
 
 ## Workflow Aplikasi

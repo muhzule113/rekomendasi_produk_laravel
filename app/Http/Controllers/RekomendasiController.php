@@ -8,7 +8,9 @@ class RekomendasiController extends Controller
 {
     public function index(RecommenderService $recommender)
     {
-        $userId = auth()->id();
+        $customer = auth()->user();
+        $isVerifiedCustomer = $customer?->isPelangganTerverifikasi() ?? false;
+        $userId = $isVerifiedCustomer ? (int) $customer->id_user : null;
         $data = $recommender->getFullRecommendation($userId, 8);
         $popular = $recommender->getPopularProducts(4);
 
@@ -20,19 +22,21 @@ class RekomendasiController extends Controller
         $popular = $this->applyCartStock($popular, $cart, $stockMap);
 
         $logSource = $data['log_source'] ?? RecommenderService::LOG_IBCF;
-        $recommender->logRecommendationItems(
-            $userId,
-            $recommendations,
-            $logSource,
-            'prediction_score',
-            'score'
-        );
-        $recommender->logRecommendationItems(
-            $userId,
-            $popular,
-            RecommenderService::LOG_COLD_START,
-            'avg_rating'
-        );
+        if ($isVerifiedCustomer) {
+            $recommender->logRecommendationItems(
+                $userId,
+                $recommendations,
+                $logSource,
+                'prediction_score',
+                'score'
+            );
+            $recommender->logRecommendationItems(
+                $userId,
+                $popular,
+                RecommenderService::LOG_COLD_START,
+                'avg_rating'
+            );
+        }
 
         return view('customer.rekomendasi', [
             'method' => $data['method'],
@@ -41,6 +45,7 @@ class RekomendasiController extends Controller
             'recommendations' => $recommendations,
             'popular' => $popular,
             'stockMap' => $stockMap,
+            'isVerifiedCustomer' => $isVerifiedCustomer,
         ]);
     }
 

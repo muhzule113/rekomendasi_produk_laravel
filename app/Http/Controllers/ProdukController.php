@@ -29,7 +29,10 @@ class ProdukController extends Controller
 
         $recommender = app(RecommenderService::class);
         $similarProducts = $recommender->getProductSimilar($id, 4);
-        $recommender->logRecommendationItems(auth()->id(), $similarProducts, 'CF_similarity', 'score');
+        $customer = auth()->user();
+        if ($customer?->isPelangganTerverifikasi()) {
+            $recommender->logRecommendationItems((int) $customer->id_user, $similarProducts, 'CF_similarity', 'score');
+        }
 
         $sameCategory = DB::table('products')
             ->join('categories', 'products.id_category', '=', 'categories.id_category')

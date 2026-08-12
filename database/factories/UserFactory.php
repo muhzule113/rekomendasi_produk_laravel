@@ -23,6 +23,7 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'role' => 'pelanggan',
             'status' => 'aktif',
+            'email_verified_at' => now(),
             'created_at' => now(),
         ];
     }
@@ -38,6 +39,20 @@ class UserFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => 'nonaktif',
+        ]);
+    }
+
+    public function verified(): static
+    {
+        return $this->state(fn () => [
+            'email_verified_at' => now(),
+        ]);
+    }
+
+    public function unverified(): static
+    {
+        return $this->state(fn () => [
+            'email_verified_at' => null,
         ]);
     }
 }

@@ -147,6 +147,20 @@
     </div>
 </div>
 
+@if(session('success') || session('status') || session('error'))
+    <div class="container" style="padding-top:1rem;">
+        @if(session('success') || session('status'))
+            <div style="background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:.5rem;">
+                {{ session('success') ?? session('status') }}
+            </div>
+        @else
+            <div style="background:#fee2e2;color:#991b1b;padding:.75rem 1rem;border-radius:.5rem;">
+                {{ session('error') }}
+            </div>
+        @endif
+    </div>
+@endif
+
 <div id="toast-container"></div>
 
 @yield('content')

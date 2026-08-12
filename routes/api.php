@@ -13,7 +13,7 @@ Route::get('/rekomendasi', [\App\Http\Controllers\Api\RekomendasiController::cla
 // Review route — defined in web.php (session-based auth) to avoid duplicate route clash
 
 // Protected routes
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/checkout', [\App\Http\Controllers\Api\CheckoutController::class, 'store']);
 });
 

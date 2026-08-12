@@ -6,8 +6,21 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', fn() => view('auth.login'))->name('login');
 Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])->name('login.post');
 Route::get('/register', fn() => view('auth.register'))->name('register');
-Route::post('/register', [\App\Http\Controllers\AuthController::class, 'register'])->name('register.post');
+Route::post('/register', [\App\Http\Controllers\AuthController::class, 'register'])
+    ->middleware('throttle:registration')
+    ->name('register.post');
 Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+
+// ── Email Verification ──
+Route::get('/email/verify', [\App\Http\Controllers\EmailVerificationController::class, 'notice'])
+    ->middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class])
+    ->name('verification.notice');
+Route::get('/email/verify/{id}/{hash}', [\App\Http\Controllers\EmailVerificationController::class, 'verify'])
+    ->middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class, 'signed'])
+    ->name('verification.verify');
+Route::post('/email/verification-notification', [\App\Http\Controllers\EmailVerificationController::class, 'send'])
+    ->middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class, 'throttle:verification-resend'])
+    ->name('verification.send');
 
 // ── Customer Pages ──
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
@@ -22,11 +35,11 @@ Route::post('/api/cart', [\App\Http\Controllers\Api\CartController::class, 'stor
 Route::put('/api/cart', [\App\Http\Controllers\Api\CartController::class, 'update'])->name('api.cart.update');
 Route::delete('/api/cart', [\App\Http\Controllers\Api\CartController::class, 'destroy'])->name('api.cart.destroy');
 // Midtrans payment verification (customer-facing)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/verify-payment', [\App\Http\Controllers\Api\VerifyPaymentController::class, 'verify'])->name('verify.payment');
 });
 
-Route::middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class, 'verified'])->group(function () {
     Route::get('/checkout', [\App\Http\Controllers\CheckoutController::class, 'index'])->name('checkout');
     Route::post('/checkout', [\App\Http\Controllers\CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/riwayat', [\App\Http\Controllers\RiwayatController::class, 'index'])->name('riwayat');

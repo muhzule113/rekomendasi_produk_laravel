@@ -30,3 +30,14 @@ __pycache__/
 *$py.class
 .venv/
 venv/
+/docs/
+
+# Agent workflow configuration and implementation specs
+!/docs/
+/docs/*
+!/docs/agents/
+!/docs/agents/**
+!/docs/specs/
+!/docs/specs/**
+!/docs/operations/
+!/docs/operations/**
