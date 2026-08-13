@@ -15,9 +15,9 @@
                 Buka tautan tersebut untuk menjadi Pelanggan Terverifikasi Toko Sinar Manis.
             </p>
 
-            @if(session('status'))
-                <div style="margin-top:1.25rem;background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:.5rem;text-align:left;">
-                    {{ session('status') }}
+            @if(session('status') || session('error'))
+                <div style="margin-top:1.25rem;background:{{ session('error') ? '#fee2e2' : '#dcfce7' }};color:{{ session('error') ? '#991b1b' : '#166534' }};padding:.75rem 1rem;border-radius:.5rem;text-align:left;">
+                    {{ session('error') ?? session('status') }}
                 </div>
             @endif
 
@@ -27,10 +27,17 @@
                 Checkout, riwayat transaksi, ulasan, verifikasi pembayaran, dan Rekomendasi Personal tersedia setelah verifikasi.
             </div>
 
-            <form method="POST" action="{{ route('verification.send') }}">
-                @csrf
-                <button type="submit" class="btn btn-primary btn-lg">Kirim Ulang Email Verifikasi</button>
-            </form>
+            <div style="margin-top:1.5rem;display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap;">
+                <form method="POST" action="{{ route('verification.send') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-primary btn-lg">Kirim Ulang Email Verifikasi</button>
+                </form>
+                <form method="GET" action="{{ route('verification.check') }}">
+                    <button type="submit" class="btn btn-outline btn-lg">
+                        <i class="fa-solid fa-circle-check"></i> Sudah Verifikasi
+                    </button>
+                </form>
+            </div>
 
             <div style="margin-top:1rem;display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;font-size:.875rem;">
                 <a href="{{ route('produk') }}" style="color:var(--primary);">Lanjut melihat katalog</a>

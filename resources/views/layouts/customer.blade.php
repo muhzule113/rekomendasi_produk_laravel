@@ -147,7 +147,7 @@
     </div>
 </div>
 
-@if(session('success') || session('status') || session('error'))
+@if(!Request::routeIs('verification.notice') && (session('success') || session('status') || session('error')))
     <div class="container" style="padding-top:1rem;">
         @if(session('success') || session('status'))
             <div style="background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:.5rem;">

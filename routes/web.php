@@ -15,6 +15,9 @@ Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])-
 Route::get('/email/verify', [\App\Http\Controllers\EmailVerificationController::class, 'notice'])
     ->middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class])
     ->name('verification.notice');
+Route::get('/email/verification-status', [\App\Http\Controllers\EmailVerificationController::class, 'check'])
+    ->middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class])
+    ->name('verification.check');
 Route::get('/email/verify/{id}/{hash}', [\App\Http\Controllers\EmailVerificationController::class, 'verify'])
     ->middleware(['auth', \App\Http\Middleware\PelangganMiddleware::class, 'signed'])
     ->name('verification.verify');

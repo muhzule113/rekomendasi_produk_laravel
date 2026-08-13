@@ -168,6 +168,15 @@ class EmailVerificationAndAuthRateLimitsTest extends TestCase
             ->assertRedirect(route('verification.notice'))
             ->assertSessionHas('status');
 
+        $noticeResponse = $this->get(route('verification.notice'))
+            ->assertOk()
+            ->assertSee('Sudah Verifikasi')
+            ->assertSee('Tautan verifikasi baru telah dikirim ke email Anda.');
+        $this->assertSame(
+            1,
+            substr_count($noticeResponse->getContent(), 'Tautan verifikasi baru telah dikirim ke email Anda.')
+        );
+
         Queue::assertPushed(SendQueuedNotifications::class);
 
         Queue::fake();
@@ -178,6 +187,28 @@ class EmailVerificationAndAuthRateLimitsTest extends TestCase
             ->assertSessionHas('status');
 
         Queue::assertNothingPushed();
+    }
+
+    public function test_verification_check_reports_current_email_status_and_redirects_verified_customer(): void
+    {
+        $customer = User::factory()->unverified()->create();
+
+        $this->actingAs($customer)
+            ->get(route('verification.check'))
+            ->assertRedirect(route('verification.notice'))
+            ->assertSessionHas(
+                'error',
+                'Email Anda belum terverifikasi. Silakan buka tautan verifikasi yang dikirim ke email Anda.'
+            );
+
+        $customer->update(['email_verified_at' => now()]);
+
+        $this->get(route('verification.check'))
+            ->assertRedirect(route('produk'))
+            ->assertSessionHas(
+                'success',
+                'Email Anda sudah terverifikasi. Selamat berbelanja di Toko Sinar Manis!'
+            );
     }
 
     public function test_verification_notification_has_brand_indonesian_copy_and_sixty_minute_signed_url(): void

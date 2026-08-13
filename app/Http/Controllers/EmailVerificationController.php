@@ -16,6 +16,23 @@ class EmailVerificationController extends Controller
         ]);
     }
 
+    public function check(Request $request)
+    {
+        $customer = $request->user()->fresh();
+
+        if ($customer->hasVerifiedEmail()) {
+            return redirect()->route('produk')->with(
+                'success',
+                'Email Anda sudah terverifikasi. Selamat berbelanja di Toko Sinar Manis!'
+            );
+        }
+
+        return redirect()->route('verification.notice')->with(
+            'error',
+            'Email Anda belum terverifikasi. Silakan buka tautan verifikasi yang dikirim ke email Anda.'
+        );
+    }
+
     public function verify(Request $request, string $id, string $hash)
     {
         $authenticated = $request->user();
