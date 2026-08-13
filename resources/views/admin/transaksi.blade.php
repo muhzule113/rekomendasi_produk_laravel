@@ -3,9 +3,12 @@
 @section('title', 'Kelola Transaksi — Toko Sinar Manis')
 
 @section('content')
-<div class="page-title-box mb-6">
-    <h1 style="font-size:1.75rem;font-weight:800;color:var(--primary);">Kelola Transaksi</h1>
-    <p class="text-sm text-muted" style="margin-top:.25rem;">Pantau dan perbarui status pesanan pelanggan secara langsung.</p>
+<div class="page-title-box mb-6 flex justify-between items-center">
+    <div>
+        <h1 style="font-size:1.75rem;font-weight:800;color:var(--primary);">Kelola Transaksi</h1>
+        <p class="text-sm text-muted" style="margin-top:.25rem;">Pantau dan perbarui status pesanan pelanggan secara langsung.</p>
+    </div>
+    <button type="button" onclick="adminModalOpen('modalUploadTransaksi')" class="btn btn-sm btn-upload"><i class="fa-solid fa-upload"></i> Upload Transaksi</button>
 </div>
 
 @if(session('success'))
@@ -158,6 +161,8 @@
     <input type="hidden" name="id_transaction" id="form_id_transaction">
     <input type="hidden" name="new_status" id="form_new_status">
 </form>
+
+@include('admin.partials.upload-transaksi-modal')
 
 <!-- Modal Detail Transaksi -->
 <div class="modal-overlay" id="modal-detail-trx" onclick="adminModalClose('modal-detail-trx')">

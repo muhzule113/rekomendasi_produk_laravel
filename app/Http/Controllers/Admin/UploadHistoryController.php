@@ -9,87 +9,92 @@ use Illuminate\Support\Facades\DB;
 
 class UploadHistoryController extends Controller
 {
-    public function index(Request $request)
+    public function legacy(Request $request)
     {
-        $id_upload = (int) $request->get('id', 0);
-        $filter    = $request->get('filter', 'all');
+        $idUpload = (int) $request->query('id', 0);
+        $source = $request->query('sumber') === 'produk' || $request->query('tab') === 'produk'
+            ? 'produk'
+            : null;
 
-        if ($id_upload > 0) {
-            $detail = DB::table('data_uploads as d')
-                ->join('users as u', 'd.id_user', '=', 'u.id_user')
-                ->where('d.id_upload', $id_upload)
-                ->select('d.*', 'u.nama as nama_admin')
-                ->first();
-
-            if (!$detail) {
-                $riwayat = DB::table('data_uploads as d')
-                    ->join('users as u', 'd.id_user', '=', 'u.id_user')
-                    ->select('d.*', 'u.nama as nama_admin')
-                    ->orderByDesc('d.uploaded_at')
-                    ->paginate(15);
-
-                return view('admin.upload-history', [
-                    'id_upload'        => $id_upload,
-                    'detail'           => null,
-                    'logs'             => [],
-                    'filter'           => $filter,
-                    'riwayat'          => $riwayat,
-                    'page_list'        => $riwayat->currentPage(),
-                    'total_pages_list' => $riwayat->lastPage(),
-                    'count_all'        => $riwayat->total(),
-                ]);
-            }
-
-            $logsQuery = DB::table('upload_logs')
-                ->where('id_upload', $id_upload);
-
-            if ($filter !== 'all') {
-                $logsQuery->where('status_baris', $filter);
-            }
-
-            $logs = $logsQuery->orderBy('nomor_baris')->get();
-            $riwayat = DB::table('data_uploads as d')
-                ->join('users as u', 'd.id_user', '=', 'u.id_user')
-                ->select('d.*', 'u.nama as nama_admin')
-                ->orderByDesc('d.uploaded_at')
-                ->paginate(15);
-
-            return view('admin.upload-history', [
-                'id_upload'        => $id_upload,
-                'detail'           => $detail,
-                'logs'             => $logs,
-                'filter'           => $filter,
-                'riwayat'          => $riwayat,
-                'page_list'        => $riwayat->currentPage(),
-                'total_pages_list' => $riwayat->lastPage(),
-                'count_all'        => $riwayat->total(),
-            ]);
+        if ($idUpload > 0) {
+            $source = DB::table('data_uploads')
+                ->where('id_upload', $idUpload)
+                ->value('sumber') ?: $source;
         }
 
-        // Daftar semua upload
-        $riwayat = DB::table('data_uploads as d')
-            ->join('users as u', 'd.id_user', '=', 'u.id_user')
-            ->select('d.*', 'u.nama as nama_admin')
+        $route = $source === 'produk'
+            ? 'admin.upload-history.produk'
+            : 'admin.upload-history.transaksi';
+
+        return redirect()->route($route, $idUpload > 0 ? ['id' => $idUpload] : []);
+    }
+
+    public function transaksi(Request $request, ?int $id = null)
+    {
+        return $this->showHistory($request, 'transaksi', $id);
+    }
+
+    public function produk(Request $request, ?int $id = null)
+    {
+        return $this->showHistory($request, 'produk', $id);
+    }
+
+    private function showHistory(Request $request, string $source, ?int $id = null)
+    {
+        $idUpload = $id ?? (int) $request->query('id', 0);
+        $filter = $request->query('filter', 'all');
+
+        $detail = null;
+        $logs = [];
+
+        if ($idUpload > 0) {
+            $detail = $this->historyQuery($source)
+                ->where('d.id_upload', $idUpload)
+                ->first();
+
+            if ($detail) {
+                $logsQuery = DB::table('upload_logs')
+                    ->where('id_upload', $idUpload);
+
+                if ($filter !== 'all') {
+                    $logsQuery->where('status_baris', $filter);
+                }
+
+                $logs = $logsQuery->orderBy('nomor_baris')->get();
+            }
+        }
+
+        $riwayat = $this->historyQuery($source)
             ->orderByDesc('d.uploaded_at')
-            ->paginate(15);
-        $page_list       = $riwayat->currentPage();
-        $total_pages_list = $riwayat->lastPage();
-        $count_all        = $riwayat->total();
+            ->paginate(15, ['*'], 'page_list')
+            ->appends($request->except(['id', 'page_list']));
 
         return view('admin.upload-history', [
-            'id_upload'        => 0,
-            'detail'           => null,
-            'logs'             => [],
+            'sumber'           => $source,
+            'id_upload'        => $idUpload,
+            'detail'           => $detail,
+            'logs'             => $logs,
             'filter'           => $filter,
             'riwayat'          => $riwayat,
-            'page_list'        => $page_list,
-            'total_pages_list' => $total_pages_list,
-            'count_all'        => $count_all,
+            'page_list'        => $riwayat->currentPage(),
+            'total_pages_list' => $riwayat->lastPage(),
+            'count_all'        => $riwayat->total(),
         ]);
+    }
+
+    private function historyQuery(string $source)
+    {
+        return DB::table('data_uploads as d')
+            ->join('users as u', 'd.id_user', '=', 'u.id_user')
+            ->where('d.sumber', $source)
+            ->select('d.*', 'u.nama as nama_admin');
     }
 
     public function destroy(int $id, UploadService $uploadService)
     {
+        $source = DB::table('data_uploads')
+            ->where('id_upload', $id)
+            ->value('sumber');
         $result = $uploadService->deleteUpload($id);
 
         if (request()->expectsJson()) {
@@ -97,7 +102,9 @@ class UploadHistoryController extends Controller
         }
 
         if ($result['ok']) {
-            return redirect()->route('admin.upload-history')->with('success', $result['pesan']);
+            return redirect()->route(
+                $source === 'produk' ? 'admin.upload-history.produk' : 'admin.upload-history.transaksi'
+            )->with('success', $result['pesan']);
         }
 
         return back()->with('error', $result['pesan']);

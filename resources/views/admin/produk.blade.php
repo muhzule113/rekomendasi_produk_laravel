@@ -8,7 +8,10 @@
         <h1 style="font-size:1.75rem;font-weight:800;color:var(--primary);">Kelola Produk</h1>
         <p class="text-sm text-muted" style="margin-top:.25rem;">Tambah, ubah, dan pantau stok produk toko.</p>
     </div>
-    <button onclick="adminModalOpen('modalAdd')" class="btn btn-sm" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;"><i class="fa-solid fa-plus"></i> Tambah Produk</button>
+    <div class="flex items-center gap-2" style="flex-wrap:wrap;">
+        <button type="button" onclick="adminModalOpen('modalUploadProduk')" class="btn btn-sm btn-upload"><i class="fa-solid fa-upload"></i> Upload Produk</button>
+        <button type="button" onclick="adminModalOpen('modalAdd')" class="btn btn-sm" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;"><i class="fa-solid fa-plus"></i> Tambah Produk</button>
+    </div>
 </div>
 
 @if(session('success'))
@@ -157,6 +160,8 @@
     @csrf
     @method('DELETE')
 </form>
+
+@include('admin.partials.upload-produk-modal')
 
 <!-- Modal Tambah -->
 <div id="modalAdd" class="modal-overlay">

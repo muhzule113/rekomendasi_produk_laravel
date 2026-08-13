@@ -66,9 +66,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', \App\Http\Middleware
     Route::get('/transaksi/{id}', [\App\Http\Controllers\Admin\TransaksiController::class, 'detail'])->name('transaksi.detail');
     Route::get('/analisis', [\App\Http\Controllers\Admin\AnalisisController::class, 'index'])->name('analisis');
     Route::get('/reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('reviews');
+    // Upload is initiated from the page that owns the data type. Keep the old
+    // GET route as a compatibility redirect for existing bookmarks.
     Route::get('/upload', [\App\Http\Controllers\Admin\UploadController::class, 'index'])->name('upload');
     Route::post('/upload', [\App\Http\Controllers\Admin\UploadController::class, 'store'])->name('upload.store');
-    Route::get('/upload-history', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'index'])->name('upload-history');
+    Route::post('/transaksi/upload', [\App\Http\Controllers\Admin\UploadController::class, 'storeTransaksi'])->name('transaksi.upload');
+    Route::post('/produk/upload', [\App\Http\Controllers\Admin\UploadController::class, 'storeProduk'])->name('produk.upload');
+    Route::get('/upload-history', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'legacy'])->name('upload-history');
+    Route::get('/upload-history/transaksi/{id?}', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'transaksi'])
+        ->whereNumber('id')
+        ->name('upload-history.transaksi');
+    Route::get('/upload-history/produk/{id?}', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'produk'])
+        ->whereNumber('id')
+        ->name('upload-history.produk');
     Route::delete('/upload-history/{id}', [\App\Http\Controllers\Admin\UploadHistoryController::class, 'destroy'])->name('upload-history.destroy');
     Route::post('/similarity', [\App\Http\Controllers\Api\SimilarityController::class, 'recalculate'])->name('similarity.recalculate');
     Route::post('/upload-data', [\App\Http\Controllers\Api\UploadController::class, 'store'])->name('upload-data.store');

@@ -32,12 +32,6 @@
         <a href="{{ route('admin.reviews') }}" class="{{ Request::is('admin/reviews*') ? 'active' : '' }}">
             <i class="fa-solid fa-star"></i> Ulasan & Rating
         </a>
-        <a href="{{ route('admin.upload') }}" class="{{ Request::is('admin/upload*') ? 'active' : '' }}">
-            <i class="fa-solid fa-upload"></i> Upload Data
-        </a>
-        <a href="{{ route('admin.upload-history') }}" class="{{ Request::is('admin/upload-history*') ? 'active' : '' }}">
-            <i class="fa-solid fa-clock-rotate-left"></i> Riwayat Upload
-        </a>
         <a href="{{ route('admin.laporan') }}" class="{{ Request::is('admin/laporan*') ? 'active' : '' }}">
             <i class="fa-solid fa-file-lines"></i> Laporan
         </a>

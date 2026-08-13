@@ -5,31 +5,36 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\UploadService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class UploadController extends Controller
 {
     public function index(Request $request)
     {
-        $tab = $request->get('tab', 'transaksi');
-
-        $riwayat = DB::table('data_uploads as d')
-            ->join('users as u', 'd.id_user', '=', 'u.id_user')
-            ->select('d.*', 'u.nama as nama_admin')
-            ->orderByDesc('d.uploaded_at')
-            ->limit(10)
-            ->get();
-
-        return view('admin.upload', compact('tab', 'riwayat'));
+        return redirect()->route(
+            $request->get('tab') === 'produk' ? 'admin.produk' : 'admin.transaksi'
+        );
     }
 
     public function store(Request $request, UploadService $uploadService)
     {
-        $tab = $request->get('tab', 'transaksi');
+        return $this->storeForSource($request, $uploadService, $request->get('tab', 'transaksi'));
+    }
 
-        $file = $tab === 'transaksi'
-            ? $request->file('file_transaksi')
-            : $request->file('file_produk');
+    public function storeTransaksi(Request $request, UploadService $uploadService)
+    {
+        return $this->storeForSource($request, $uploadService, 'transaksi');
+    }
+
+    public function storeProduk(Request $request, UploadService $uploadService)
+    {
+        return $this->storeForSource($request, $uploadService, 'produk');
+    }
+
+    private function storeForSource(Request $request, UploadService $uploadService, string $sumber)
+    {
+        $sumber = $sumber === 'produk' ? 'produk' : 'transaksi';
+
+        $file = $request->file($sumber === 'produk' ? 'file_produk' : 'file_transaksi');
 
         if (!$file) {
             if ($request->expectsJson()) {
@@ -45,7 +50,7 @@ class UploadController extends Controller
             'size'     => $file->getSize(),
         ];
 
-        $result = $tab === 'produk'
+        $result = $sumber === 'produk'
             ? $uploadService->handleProdukUpload($fileArray, auth()->id())
             : $uploadService->handleUpload($fileArray, auth()->id());
 
@@ -54,7 +59,11 @@ class UploadController extends Controller
         }
 
         if ($result['ok']) {
-            return redirect()->route('admin.upload-history', ['id' => $result['id_upload']])
+            $historyRoute = $sumber === 'produk'
+                ? 'admin.upload-history.produk'
+                : 'admin.upload-history.transaksi';
+
+            return redirect()->route($historyRoute, ['id' => $result['id_upload']])
                 ->with('success', 'File berhasil diupload. Preprocessing sedang berjalan.');
         }
 

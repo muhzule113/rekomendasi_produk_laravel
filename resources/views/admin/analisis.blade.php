@@ -12,7 +12,7 @@
         @if ($last_updated)
         <span class="text-xs text-muted">Update: {{ date('d M H:i', strtotime($last_updated)) }}</span>
         @endif
-        <button onclick="hitungSimilarity()" class="btn btn-gold btn-sm" id="btnProses" style="transition:all .2s; box-shadow: 0 3px 10px rgba(212,175,55,0.25);" onmouseover="this.style.boxShadow='0 5px 16px rgba(212,175,55,0.4)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 3px 10px rgba(212,175,55,0.25)';this.style.transform='none'">
+        <button onclick="hitungSimilarity()" class="btn btn-upload btn-sm" id="btnProses">
             <i class="fa-solid fa-rotate" id="btnProsesIcon"></i> <span id="btnProsesText">Hitung Ulang</span>
         </button>
     </div>
@@ -386,7 +386,7 @@
             </div>
         </div>
         <div style="padding: 0 1.5rem 1.5rem;">
-            <button class="btn btn-gold" onclick="window.location.reload()" style="width: 100%; justify-content: center; padding: 0.75rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px; transition: all .2s; box-shadow: 0 4px 12px rgba(212,175,55,0.3);" onmouseover="this.style.boxShadow='0 6px 20px rgba(212,175,55,0.5)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 4px 12px rgba(212,175,55,0.3)';this.style.transform='none'">
+            <button class="btn btn-upload" onclick="window.location.reload()" style="width: 100%; justify-content: center; padding: 0.75rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px;">
                 <i class="fa-solid fa-rotate"></i> Selesai &amp; Refresh
             </button>
         </div>

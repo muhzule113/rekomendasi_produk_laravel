@@ -307,6 +307,44 @@ body {
     max-width: 55rem;
 }
 
+/* ─── Upload Actions ─────────────────────────────────────────── */
+.btn-upload {
+    background: transparent;
+    border-color: var(--color-gold);
+    color: var(--color-navy);
+    box-shadow: 0 2px 8px rgba(212, 168, 75, 0.12);
+}
+
+.btn-upload i {
+    color: var(--color-gold);
+}
+
+.btn-upload:hover {
+    background: #fffbeb;
+    border-color: #b8922e;
+    color: var(--color-navy-dark);
+    box-shadow: 0 5px 14px rgba(212, 168, 75, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-upload:active {
+    background: #fef3c7;
+    transform: translateY(0);
+}
+
+.btn-upload:focus-visible {
+    outline: 3px solid rgba(212, 168, 75, 0.28);
+    outline-offset: 2px;
+}
+
+.btn-upload:disabled,
+.btn-upload[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
 .alert-card {
     display: flex;
     align-items: flex-start;
@@ -743,4 +781,3 @@ body.sidebar-open .admin-sidebar-overlay {
     from { opacity: 1; transform: translateX(0); }
     to   { opacity: 0; transform: translateX(30px); }
 }
-
