@@ -220,9 +220,16 @@ function confirmStatusUpdate(id, action, newStatus, oldStatus) {
     }
 
     let title = action === 'update_pembayaran' ? 'Ubah Status Pembayaran?' : 'Ubah Status Pesanan?';
-    let desc = `Yakin ingin mengubah status menjadi <b>${newStatus}</b>?`;
-    if (newStatus === 'Selesai') desc += '<br>Status ini bersifat final dan tidak dapat diubah kembali.';
-    if (newStatus === 'Dibatalkan') desc += '<br>Aksi pembatalan tidak dapat dikembalikan.';
+    let desc = {
+        before: 'Yakin ingin mengubah status menjadi ',
+        emphasis: newStatus,
+        after: '?',
+        note: newStatus === 'Selesai'
+            ? 'Status ini bersifat final dan tidak dapat diubah kembali.'
+            : newStatus === 'Dibatalkan'
+                ? 'Aksi pembatalan tidak dapat dikembalikan.'
+                : '',
+    };
 
     if (typeof adminConfirm === 'function') {
         adminConfirm({
@@ -239,8 +246,6 @@ function confirmStatusUpdate(id, action, newStatus, oldStatus) {
                 document.getElementById('formUpdateStatus').submit();
             }
         });
-        // Fix: innerHTML for desc since adminConfirm sets textContent by default
-        document.getElementById('admin-confirm-desc').innerHTML = desc;
     } else {
         if(confirm(`Yakin ingin mengubah status menjadi ${newStatus}?`)) {
             document.getElementById('form_action').value = action;
