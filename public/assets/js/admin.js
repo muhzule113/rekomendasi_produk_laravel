@@ -79,7 +79,7 @@ function adminConfirm(opts) {
     const okLabel = opts.okLabel || 'Ya, Lanjutkan';
 
     document.getElementById('confirm-title').textContent    = opts.title || 'Konfirmasi Aksi';
-    document.getElementById('confirm-desc').textContent     = opts.desc  || 'Apakah Anda yakin?';
+    renderConfirmDescription(opts.desc || 'Apakah Anda yakin?');
     document.getElementById('confirm-icon').className       = `fa-solid ${icon}`;
     document.getElementById('confirm-icon-wrap').className  = `confirm-icon-wrap ${type}`;
 
@@ -92,6 +92,31 @@ function adminConfirm(opts) {
     const overlay = document.getElementById('admin-confirm-overlay');
     overlay.classList.add('show');
     document.addEventListener('keydown', _confirmKeyHandler);
+}
+
+function renderConfirmDescription(desc) {
+    const element = document.getElementById('confirm-desc');
+    element.replaceChildren();
+
+    if (!desc || typeof desc !== 'object') {
+        element.textContent = desc || 'Apakah Anda yakin?';
+        return;
+    }
+
+    element.append(document.createTextNode(desc.before || ''));
+
+    if (desc.emphasis) {
+        const emphasis = document.createElement('strong');
+        emphasis.textContent = desc.emphasis;
+        element.append(emphasis);
+    }
+
+    element.append(document.createTextNode(desc.after || ''));
+
+    if (desc.note) {
+        element.append(document.createElement('br'));
+        element.append(document.createTextNode(desc.note));
+    }
 }
 
 function adminConfirmClose() {
