@@ -57,6 +57,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', \App\Http\Middleware
     Route::put('/produk/{id}', [\App\Http\Controllers\Admin\ProdukController::class, 'update'])->name('produk.update');
     Route::delete('/produk/{id}', [\App\Http\Controllers\Admin\ProdukController::class, 'destroy'])->name('produk.destroy');
     Route::delete('/produk', [\App\Http\Controllers\Admin\ProdukController::class, 'bulkDestroy'])->name('produk.bulk-destroy');
+    Route::get('/kategori', [\App\Http\Controllers\Admin\KategoriController::class, 'index'])->name('kategori');
+    Route::post('/kategori', [\App\Http\Controllers\Admin\KategoriController::class, 'store'])->name('kategori.store');
+    Route::put('/kategori/{category}', [\App\Http\Controllers\Admin\KategoriController::class, 'update'])->name('kategori.update');
+    Route::delete('/kategori/{category}', [\App\Http\Controllers\Admin\KategoriController::class, 'destroy'])->name('kategori.destroy');
     Route::get('/pelanggan', [\App\Http\Controllers\Admin\PelangganController::class, 'index'])->name('pelanggan');
     Route::delete('/pelanggan', [\App\Http\Controllers\Admin\PelangganController::class, 'bulkDestroy'])->name('pelanggan.bulk-destroy');
     Route::get('/pelanggan/{id}/transaksi', [\App\Http\Controllers\Admin\PelangganController::class, 'transaksi'])->name('pelanggan.transaksi');

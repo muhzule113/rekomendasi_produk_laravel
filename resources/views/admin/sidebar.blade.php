@@ -20,6 +20,9 @@
         <a href="{{ route('admin.produk') }}" class="{{ Request::is('admin/produk*') ? 'active' : '' }}">
             <i class="fa-solid fa-box"></i> Kelola Produk
         </a>
+        <a href="{{ route('admin.kategori') }}" class="{{ Request::is('admin/kategori*') ? 'active' : '' }}">
+            <i class="fa-solid fa-layer-group"></i> Kelola Kategori
+        </a>
         <a href="{{ route('admin.pelanggan') }}" class="{{ Request::is('admin/pelanggan*') ? 'active' : '' }}">
             <i class="fa-solid fa-users"></i> Data Pelanggan
         </a>
