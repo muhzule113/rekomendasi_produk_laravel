@@ -3,7 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-5002}:80"
+      - "127.0.0.1:${APP_PORT:-5002}:80"
     volumes:
       - ./storage/app:/var/www/html/storage/app
     env_file: .env
