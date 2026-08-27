@@ -8,7 +8,10 @@
         <h1 style="font-size:1.75rem;font-weight:800;color:var(--primary);">Kelola Produk</h1>
         <p class="text-sm text-muted" style="margin-top:.25rem;">Tambah, ubah, dan pantau stok produk toko.</p>
     </div>
-    <button onclick="adminModalOpen('modalAdd')" class="btn btn-sm" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;"><i class="fa-solid fa-plus"></i> Tambah Produk</button>
+    <div class="flex gap-2">
+        <a href="{{ route('admin.kategori') }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-layer-group"></i> Kelola Kategori</a>
+        <button onclick="adminModalOpen('modalAdd')" class="btn btn-sm" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe;"><i class="fa-solid fa-plus"></i> Tambah Produk</button>
+    </div>
 </div>
 
 @if(session('success'))
@@ -177,25 +180,16 @@
                     </div>
                     <div class="category-picker-control">
                         <i class="fa-solid fa-layer-group category-picker-icon" aria-hidden="true"></i>
-                        <select name="id_category" id="add_id_category" class="form-control category-picker-select" aria-describedby="add_category_hint" onchange="toggleNewCategory('add')" required>
+                        <select name="id_category" id="add_id_category" class="form-control category-picker-select" aria-describedby="add_category_hint" required>
                             @foreach($categories as $c)
                                 <option value="{{ $c->id_category }}">{{ $c->nama_category }}</option>
                             @endforeach
-                            <option value="__new__">+ Tambah kategori baru</option>
                         </select>
                         <i class="fa-solid fa-chevron-down category-picker-chevron" aria-hidden="true"></i>
                     </div>
                     <div class="category-picker-footer">
                         <p id="add_category_hint" class="category-picker-hint"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Pilih kategori produk</p>
-                        <button type="button" id="add_new_category_trigger" class="category-picker-new" onclick="selectNewCategory('add')">
-                            <i class="fa-solid fa-circle-plus" aria-hidden="true"></i> Buat kategori baru
-                        </button>
                     </div>
-                </div>
-                <div class="form-group category-picker-new-group" id="add_new_category_group" style="display:none;">
-                    <div class="category-picker-new-heading"><span><i class="fa-solid fa-sparkles" aria-hidden="true"></i> Kategori baru</span><small>Disimpan otomatis</small></div>
-                    <label class="form-label" for="add_new_category_name">Nama Kategori Baru</label>
-                    <input type="text" name="new_category_name" id="add_new_category_name" class="form-control" maxlength="100" placeholder="Contoh: Kue Kering">
                 </div>
                 <div class="grid-2 gap-4">
                     <div class="form-group">
@@ -245,25 +239,16 @@
                     </div>
                     <div class="category-picker-control">
                         <i class="fa-solid fa-layer-group category-picker-icon" aria-hidden="true"></i>
-                        <select name="id_category" id="edit_id_category" class="form-control category-picker-select" aria-describedby="edit_category_hint" onchange="toggleNewCategory('edit')" required>
+                        <select name="id_category" id="edit_id_category" class="form-control category-picker-select" aria-describedby="edit_category_hint" required>
                             @foreach($categories as $c)
                                 <option value="{{ $c->id_category }}">{{ $c->nama_category }}</option>
                             @endforeach
-                            <option value="__new__">+ Tambah kategori baru</option>
                         </select>
                         <i class="fa-solid fa-chevron-down category-picker-chevron" aria-hidden="true"></i>
                     </div>
                     <div class="category-picker-footer">
                         <p id="edit_category_hint" class="category-picker-hint"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Pilih kategori produk</p>
-                        <button type="button" id="edit_new_category_trigger" class="category-picker-new" onclick="selectNewCategory('edit')">
-                            <i class="fa-solid fa-circle-plus" aria-hidden="true"></i> Buat kategori baru
-                        </button>
                     </div>
-                </div>
-                <div class="form-group category-picker-new-group" id="edit_new_category_group" style="display:none;">
-                    <div class="category-picker-new-heading"><span><i class="fa-solid fa-sparkles" aria-hidden="true"></i> Kategori baru</span><small>Disimpan otomatis</small></div>
-                    <label class="form-label" for="edit_new_category_name">Nama Kategori Baru</label>
-                    <input type="text" name="new_category_name" id="edit_new_category_name" class="form-control" maxlength="100" placeholder="Contoh: Kue Kering">
                 </div>
                 <div class="grid-2 gap-4">
                     <div class="form-group">
@@ -308,9 +293,7 @@
     margin-bottom: 1.25rem;
 }
 
-.category-picker-heading,
-.category-picker-footer,
-.category-picker-new-heading {
+.category-picker-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -337,9 +320,7 @@
 }
 
 .category-picker-badge i,
-.category-picker-hint i,
-.category-picker-new i,
-.category-picker-new-heading i {
+.category-picker-hint i {
     color: var(--color-gold);
 }
 
@@ -402,7 +383,6 @@
 }
 
 .category-picker-footer {
-    align-items: flex-start;
     margin-top: .45rem;
 }
 
@@ -416,105 +396,15 @@
     line-height: 1.4;
 }
 
-.category-picker-new {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    flex-shrink: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--color-navy);
-    font-size: .76rem;
-    font-weight: 800;
-}
-
-.category-picker-new:hover,
-.category-picker-new:focus-visible {
-    color: var(--color-gold);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-}
-
-.category-picker-new.is-active {
-    color: var(--color-gold);
-}
-
-.category-picker-new-group {
-    margin-top: -.25rem;
-    padding: .85rem;
-    border: 1px dashed rgba(212, 168, 75, .6);
-    border-radius: .8rem;
-    background: #fffbeb;
-}
-
-.category-picker-new-heading {
-    margin-bottom: .6rem;
-    color: var(--color-navy);
-    font-size: .78rem;
-    font-weight: 800;
-}
-
-.category-picker-new-heading span {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-}
-
-.category-picker-new-heading small {
-    color: var(--color-muted);
-    font-size: .68rem;
-    font-weight: 600;
-}
-
-.category-picker-new-group .form-label {
-    color: var(--color-navy);
-}
-
-@media (max-width: 520px) {
-    .category-picker-footer {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: .35rem;
-    }
-}
 </style>
 @endpush
 
 @push('scripts')
 <script>
-function toggleNewCategory(prefix) {
-    const select = document.getElementById(`${prefix}_id_category`);
-    const group = document.getElementById(`${prefix}_new_category_group`);
-    const input = document.getElementById(`${prefix}_new_category_name`);
-    const hint = document.getElementById(`${prefix}_category_hint`);
-    const trigger = document.getElementById(`${prefix}_new_category_trigger`);
-    const addingNew = select.value === '__new__';
-
-    group.style.display = addingNew ? 'block' : 'none';
-    input.required = addingNew;
-    trigger.classList.toggle('is-active', addingNew);
-    hint.innerHTML = addingNew
-        ? '<i class="fa-solid fa-circle-info" aria-hidden="true"></i> Masukkan nama kategori yang ingin digunakan'
-        : '<i class="fa-solid fa-circle-info" aria-hidden="true"></i> Pilih kategori produk';
-    if (addingNew) {
-        input.focus();
-    } else {
-        input.value = '';
-    }
-}
-
-function selectNewCategory(prefix) {
-    const select = document.getElementById(`${prefix}_id_category`);
-    select.value = '__new__';
-    toggleNewCategory(prefix);
-}
-
 function editProduct(p) {
     document.getElementById('edit_id_product').value = p.id_product;
     document.getElementById('edit_nama_product').value = p.nama_product;
     document.getElementById('edit_id_category').value = p.id_category;
-    toggleNewCategory('edit');
     document.getElementById('edit_harga').value = p.harga;
     document.getElementById('edit_stok').value = p.stok;
     document.getElementById('edit_deskripsi').value = p.deskripsi || '';
@@ -526,10 +416,5 @@ function editProduct(p) {
     document.getElementById('formEdit').action = "{{ route('admin.produk.update', '__ID__') }}".replace('__ID__', p.id_product);
     adminModalOpen('modalEdit');
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    toggleNewCategory('add');
-    toggleNewCategory('edit');
-});
 </script>
 @endpush

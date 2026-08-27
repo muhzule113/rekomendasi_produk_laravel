@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProdukController extends Controller
@@ -41,6 +40,7 @@ class ProdukController extends Controller
 
         $data = [
             'nama_product' => $validated['nama_product'],
+            'id_category' => (int) $validated['id_category'],
             'harga' => $validated['harga'],
             'stok' => $validated['stok'],
             'deskripsi' => $validated['deskripsi'] ?? null,
@@ -50,10 +50,7 @@ class ProdukController extends Controller
             $data['foto'] = $request->file('foto')->store('products', 'public');
         }
 
-        DB::transaction(function () use (&$data, $validated): void {
-            $data['id_category'] = $this->resolveCategoryId($validated);
-            DB::table('products')->insert($data);
-        });
+        DB::table('products')->insert($data);
 
         return redirect()->route('admin.produk')->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -64,6 +61,7 @@ class ProdukController extends Controller
 
         $data = [
             'nama_product' => $validated['nama_product'],
+            'id_category' => (int) $validated['id_category'],
             'harga' => $validated['harga'],
             'stok' => $validated['stok'],
             'deskripsi' => $validated['deskripsi'] ?? null,
@@ -78,10 +76,7 @@ class ProdukController extends Controller
             $data['foto'] = $request->file('foto')->store('products', 'public');
         }
 
-        DB::transaction(function () use (&$data, $validated, $id): void {
-            $data['id_category'] = $this->resolveCategoryId($validated);
-            DB::table('products')->where('id_product', $id)->update($data);
-        });
+        DB::table('products')->where('id_product', $id)->update($data);
 
         return redirect()->route('admin.produk')->with('success', 'Produk berhasil diupdate.');
     }
@@ -133,38 +128,12 @@ class ProdukController extends Controller
     {
         return [
             'nama_product' => ['required', 'string', 'max:150'],
-            'id_category' => [
-                'required',
-                Rule::when(
-                    $request->input('id_category') === '__new__',
-                    ['in:__new__'],
-                    ['integer', 'exists:categories,id_category']
-                ),
-            ],
-            'new_category_name' => ['nullable', 'required_if:id_category,__new__', 'string', 'max:100'],
+            'id_category' => ['required', 'integer', 'exists:categories,id_category'],
             'harga' => ['required', 'numeric', 'min:0'],
             'stok' => ['required', 'integer', 'min:0'],
             'foto' => ['nullable', 'image', 'max:2048'],
             'deskripsi' => ['nullable', 'string'],
             'status' => [$updating ? 'required' : 'nullable', Rule::in(['aktif', 'nonaktif'])],
         ];
-    }
-
-    private function resolveCategoryId(array $validated): int
-    {
-        if ($validated['id_category'] !== '__new__') {
-            return (int) $validated['id_category'];
-        }
-
-        $categoryName = trim($validated['new_category_name']);
-        $existingId = DB::table('categories')
-            ->whereRaw('LOWER(nama_category) = ?', [Str::lower($categoryName)])
-            ->value('id_category');
-
-        return $existingId
-            ? (int) $existingId
-            : (int) DB::table('categories')->insertGetId([
-                'nama_category' => $categoryName,
-            ], 'id_category');
     }
 }
