@@ -8,7 +8,6 @@
         <h1 style="font-size:1.75rem;font-weight:800;color:var(--primary);">Kelola Produk</h1>
         <p class="text-sm text-muted" style="margin-top:.25rem;">Tambah, ubah, dan pantau stok produk toko.</p>
     </div>
-<<<<<<< HEAD
     <div class="flex items-center gap-2" style="flex-wrap:wrap;">
         <a href="{{ route('admin.kategori') }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-layer-group"></i> Kelola Kategori</a>
         <button type="button" onclick="adminModalOpen('modalUploadProduk')" class="btn btn-sm btn-upload"><i class="fa-solid fa-upload"></i> Upload Produk</button>
